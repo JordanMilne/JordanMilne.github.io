@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: 
+
+Sitemap: http://JordanMilne.github.io/sitemap.xml 
