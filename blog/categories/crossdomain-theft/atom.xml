@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Crossdomain_theft | Defined Misbehaviour]]></title>
+  <link href="http://JordanMilne.github.io/blog/categories/crossdomain-theft/atom.xml" rel="self"/>
+  <link href="http://JordanMilne.github.io/"/>
+  <updated>2014-02-05T16:46:04-04:00</updated>
+  <id>http://JordanMilne.github.io/</id>
+  <author>
+    <name><![CDATA[Jordan Milne]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[What's That Smell? Sniffing Cross-origin Frame Content in Firefox]]></title>
+    <link href="http://JordanMilne.github.io/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/"/>
+    <updated>2014-02-05T10:12:13-04:00</updated>
+    <id>http://JordanMilne.github.io/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox</id>
+    <content type="html"><![CDATA[<p>Reading the blogs of <a href="http://lcamtuf.blogspot.com">lcamtuf</a> and <a href="http://scarybeastsecurity.blogspot.ca/">Chris Evans</a> is really what got me interested in browser security,
+so I&rsquo;m always on the lookout for novel cross-domain data theft vectors. Today I&rsquo;m going to go into
+the discovery and exploitation of such a bug: A timing attack on Firefox&rsquo;s <code>document.elementFromPoint</code> and <code>document.caretPositionFromPoint</code> implementations.</p>
+
+<a name="Initial.Discovery"></a>
+<h1>Initial Discovery</h1>
+
+<p>I was looking at ways to automatically exploit another bug that required user interaction when I noticed <a href="https://developer.mozilla.org/en-US/docs/Web/API/document.elementFromPoint">elementFromPoint</a> and
+<a href="https://developer.mozilla.org/en-US/docs/Web/API/document.caretPositionFromPoint">caretPositionFromPoint</a> on the MDN.
+Curious as to how they behaved with frames, I did a little testing.</p>
+
+<p>I made an example page to test:</p>
+
+<p>```html
+<html><body></p>
+
+<pre><code>&lt;iframe id="testFrame" src="http://cbc.ca" width="1025"&gt;&lt;/iframe&gt;
+</code></pre>
+
+<p></body></html>
+```</p>
+
+<p><code>elementFromPoint()</code> behaved exactly as I expected, when used in the web console it returned the iframe on my page:</p>
+
+<p>```javascript</p>
+
+<blockquote><p>console.log(document.elementFromPoint(frame.offsetLeft + 10, frame.offsetTop + 10))
+&lt; [object HTMLIFrameElement]
+```</p></blockquote>
+
+<p><code>caretPositionFromPoint()</code>, however, was returning elements from the page on cbc.ca!</p>
+
+<p>```javascript</p>
+
+<blockquote><p>console.log(document.caretPositionFromPoint(frame.offsetLeft + 10, frame.offsetTop + 10))
+&lt; [object CaretPosition]
+```
+<a href="/images/posts/frompoint/obj_inspector.png"><img class="center" src="/images/posts/frompoint/obj_inspector.png"></a></p></blockquote>
+
+<p>But there was a small snag: I couldn&rsquo;t actually access the <code>CaretPosition</code>&rsquo;s <code>offsetNode</code> from JS without getting a security exception.
+It seems that Firefox noticed that <code>offsetNode</code> was being set to an element from a cross-origin document, and wrapped the <code>CaretPosition</code> object
+so that I couldn&rsquo;t access any of its members from <em>my</em> document. Great.</p>
+
+<p>However, I found I <em>could</em> access <code>offsetNode</code> when it was set to null. <code>offsetNode</code> seems to be set to null when the topmost
+element at a given point is a button, and that includes scrollbar thumbs. That&rsquo;s great for us, because knowing the size and location of the frame&rsquo;s scrollbar thumb
+tells us how large the framed document is, and also allows us to leak which elements exist on the page.</p>
+
+<p>For example here&rsquo;s what we can infer about <a href="https://tomcat.apache.org/tomcat-5.5-doc/ssl-howto.html#Create_a_local_Certificate_Signing_Request_(CSR)">https://tomcat.apache.org/tomcat-5.5-doc/ssl-howto.html#Create_a_local_Certificate_Signing_Request_(CSR)</a> through its scrollbars:</p>
+
+<p><a href="/images/posts/frompoint/nullity_test.png"><img class="center" src="/images/posts/frompoint/nullity_test.png" width="600" height="600"></a></p>
+
+<p>The vertical scrollbar thumb has obviously moved, so we know that an element with an id of <code>Create_a_local_Certificate_Signing_Request_(CSR)</code> exists in the framed document.</p>
+
+<p>The following function is used to test <code>offsetNode</code> accessibility at a given point in the document:</p>
+
+<p>```javascript
+function isOffsetNodeAccessibleAt(x, y) {</p>
+
+<pre><code>try {
+    document.caretPositionFromPoint(x, y).offsetNode;
+} catch(e) {
+    return false;
+}
+return true;
+</code></pre>
+
+<p>}
+```</p>
+
+<a name="Digging.Deeper"></a>
+<h1>Digging Deeper</h1>
+
+<p>Knowing the page&rsquo;s size and whether certain elements are present is nice, but I wanted more. I remembered <a href="http://contextis.co.uk/research/white-papers/pixel-perfect-timing-attacks-html5/">Paul Stone&rsquo;s excellent paper about timing attacks on browser renderers</a> and figured a timing attack might help us here.</p>
+
+<p><code>caretPositionFromPoint</code> has to do hit testing on the document to determine what the topmost element is at a given point,
+and I figured that&rsquo;s not likely to be a constant time operation. It was also clear that hit testing <em>was</em> being performed on cross-origin frame contents, since <code>caretPositionFromPoint</code> was returning elements from them.
+I guessed that the time it took for a <code>caretPositionFromPoint(x,y)</code> call to return would leak information about the element at <code>(x,y)</code>.</p>
+
+<p>To test my theory I made a script that runs <code>caretPositionFromPoint(x,y)</code> on a given point 50 times, then stores the median time that the call took to complete. Using the median is important so we can eliminate timing differences due to unrelated factors, like CPU load at the time of the call.</p>
+
+<p>```javascript
+function timeToFindPoint(x, y) {</p>
+
+<pre><code>// window. getter is slow, apparently.
+var perf = window.performance;
+
+// Run caretPositionFromPoint() NUM_SAMPLES times and store runtime for each call.
+var runTimes = new Float64Array(NUM_SAMPLES);
+for(var i=0; i&lt;NUM_SAMPLES; ++i) {
+    var start = perf.now();
+    document.caretPositionFromPoint(x, y);
+    runTimes[i] = perf.now() - start;
+}
+
+// Return the median runtime for the call
+runTimes = Array.apply( [], runTimes);
+runTimes.sort();
+
+return runTimes[(NUM_SAMPLES / 2) | 0];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Once we&rsquo;ve gathered timing measurements for all of the points across the iframe, we can make a visualization of the differences:</p>
+
+<p><a href="/images/posts/frompoint/reltime.png"><img class="center" src="/images/posts/frompoint/reltime.png" width="600" height="600"></a></p>
+
+<p>Neat.</p>
+
+<p>You can see a number of things in the timing data: the bounding boxes of individual elements, how the lines of text wrap, the position of the bullets in the list, etc.</p>
+
+<p>It also seems that even though <code>elementFromPoint</code> doesn&rsquo;t return elements from the framed document, it still descends into it for its hit testing, so it&rsquo;s vulnerable to
+the same timing attack as <code>caretPositionFromPoint</code>.</p>
+
+<a name="Stealing.Text"></a>
+<h1>Stealing Text</h1>
+
+<p>So we can infer quite a bit about the framed document from the timing information, but can we actually steal text from it?</p>
+
+<ul>
+<li><strong>Short Answer</strong>: No.</li>
+<li><strong>Long Answer</strong>: Maybe, with a lot of work, depending on the page&rsquo;s styling.</li>
+</ul>
+
+
+<p>I&rsquo;d hoped that <code>caretPositionFromPoint</code>&rsquo;s real purpose (determining what character index the caret should be at for a given point) would yield large enough timing differences to leak the width of individual characters, but that didn&rsquo;t seem to be the case.</p>
+
+<p><a href="http://sirdarckcat.blogspot.com/2013/09/matryoshka-wrapping-overflow-leak-on.html#victim2">Using a similar method to sirdarckcat&rsquo;s</a>, we can shrink the width of the iframe to force the text to rewrap, and subtract the old width of the the line from the new width, giving us the width of the word that just wrapped.</p>
+
+<p>Note that since we need to force text wrapping to get these measurements, it&rsquo;s harder to steal text from fixed-width pages, or pages that display a horizontal scrollbar instead of wrapping text (like <code>view-source:</code> URIs.) Pages that use fixed-width fonts are also more difficult to analyze because characters do not have distinct widths, we can only determine the number of characters in the word.</p>
+
+<a name="Working.Examples"></a>
+<h1>Working Examples</h1>
+
+<p>Note that the last Firefox version these actually work in is <code>26</code>, if you want to try them out you&rsquo;ll have to find a download for it.</p>
+
+<ul>
+<li><a href="#">caretPositionFromPoint accessibility PoC</a></li>
+<li><a href="#">*FromPoint timing attack PoC</a></li>
+</ul>
+
+
+<a name="The.Fix"></a>
+<h1>The Fix</h1>
+
+<p>Judging from <a href="https://hg.mozilla.org/mozilla-central/rev/cdbe5779c728">Robert O'Callahan&rsquo;s fix</a>, it looks like Firefox was using a general hit testing function that descended cross document for both <code>elementFromPoint</code> and <code>caretPositionFromPoint</code>. The fix was to disable cross-document descent in the hit testing function when called by either <code>elementFromPoint</code> or <code>caretPositionFromPoint</code>.</p>
+
+<a name="Disclosure.Timeline"></a>
+<h1>Disclosure Timeline</h1>
+
+<ul>
+<li>Dec. 11 2013: Discovered <code>caretPositionFromPoint</code> leaked info through <code>offsetNode</code> accessibility</li>
+<li>Dec. 13 2013: Notified Mozilla</li>
+<li>Dec. 13 2013: Mozilla responds</li>
+<li>Dec. 15 2013: Discovered timing info leaks in both <code>elementFromPoint</code> and <code>caretPositionFromPoint</code></li>
+<li>Dec. 16 2013: Sent update to Mozilla</li>
+<li>Dec. 16 2013: Mozilla responds</li>
+<li>Dec. 18 2013: <a href="https://hg.mozilla.org/mozilla-central/rev/cdbe5779c728">Fix committed</a></li>
+<li>Jan. 16 2014: Fix pushed to Beta channel</li>
+<li>Feb. 04 2014: Fix pushed to Stable channel and <a href="https://www.mozilla.org/security/announce/2014/mfsa2014-05.html">advisory posted</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>
