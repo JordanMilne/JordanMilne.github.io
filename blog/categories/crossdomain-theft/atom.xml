@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Crossdomain_theft | Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/blog/categories/crossdomain-theft/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-02-05T22:28:13-04:00</updated>
+  <updated>2014-02-05T22:30:30-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -14,7 +14,7 @@
 
   
   <entry>
-    <title type="html"><![CDATA[What's That Smell? Sniffing Cross-origin Frame Content in Firefox]]></title>
+    <title type="html"><![CDATA[What's That Smell? Sniffing Cross-origin Frame Content in Firefox Using Timing Attacks]]></title>
     <link href="http://JordanMilne.github.io/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/"/>
     <updated>2014-02-05T10:12:13-04:00</updated>
     <id>http://JordanMilne.github.io/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox</id>
