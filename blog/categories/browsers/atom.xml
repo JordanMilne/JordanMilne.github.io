@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Browsers | Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/blog/categories/browsers/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-02-05T22:30:30-04:00</updated>
+  <updated>2014-02-05T22:33:50-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -160,7 +160,7 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
 <a name="The.Fix"></a>
 <h1>The Fix</h1>
 
-<p>Judging from <a href="https://hg.mozilla.org/mozilla-central/rev/cdbe5779c728">Robert O'Callahan&rsquo;s fix</a>, it looks like Firefox was using a general hit testing function that descended cross document for both <code>elementFromPoint</code> and <code>caretPositionFromPoint</code>. The fix was to disable cross-document descent in the hit testing function when called by either <code>elementFromPoint</code> or <code>caretPositionFromPoint</code>.</p>
+<p>Judging from <a href="https://hg.mozilla.org/mozilla-central/rev/cdbe5779c728">Robert O'Callahan&rsquo;s fix</a>, it looks like Firefox was using a general hit testing function that descended cross-document for both <code>elementFromPoint</code> and <code>caretPositionFromPoint</code>. The fix was to disable cross-document descent in the hit testing function when called by either <code>elementFromPoint</code> or <code>caretPositionFromPoint</code>.</p>
 
 <a name="Disclosure.Timeline"></a>
 <h1>Disclosure Timeline</h1>
