@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Crossdomain_theft | Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/blog/categories/crossdomain-theft/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-02-05T22:16:53-04:00</updated>
+  <updated>2014-02-05T22:19:00-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -40,7 +40,7 @@ Curious as to how they behaved with frames, I did a little testing.</p>
 <p></body></html>
 ```</p>
 
-<p><code>elementFromPoint()</code> behaved exactly as I expected, when used in the web console it returned the iframe on my page:</p>
+<p><code>elementFromPoint(x,y)</code> behaved exactly as I expected, when used in the web console it returned the iframe on my page:</p>
 
 <p>```javascript</p>
 
@@ -48,7 +48,7 @@ Curious as to how they behaved with frames, I did a little testing.</p>
 &lt; [object HTMLIFrameElement]
 ```</p></blockquote>
 
-<p><code>caretPositionFromPoint()</code>, however, was returning elements from the page on cbc.ca!</p>
+<p><code>caretPositionFromPoint(x,y)</code>, however, was returning elements from the page on cbc.ca!</p>
 
 <p>```javascript</p>
 
@@ -136,13 +136,7 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
 <a name="Stealing.Text"></a>
 <h1>Stealing Text</h1>
 
-<p>So we can infer quite a bit about the framed document from the timing information, but can we actually steal text from it?</p>
-
-<ul>
-<li><strong>Short Answer</strong>: No.</li>
-<li><strong>Long Answer</strong>: Maybe, with a lot of work, depending on the page&rsquo;s styling.</li>
-</ul>
-
+<p>So we can infer quite a bit about the framed document from the timing information, but can we actually steal text from it? Maybe, with a lot of work, depending on the page&rsquo;s styling.</p>
 
 <p>I&rsquo;d hoped that <code>caretPositionFromPoint</code>&rsquo;s real purpose (determining what character index the caret should be at for a given point) would yield large enough timing differences to leak the width of individual characters, but that didn&rsquo;t seem to be the case.</p>
 
