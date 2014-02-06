@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-02-05T21:55:21-04:00</updated>
+  <updated>2014-02-05T22:10:23-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -171,7 +171,7 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
 
 <p><a href="http://sirdarckcat.blogspot.com/2013/09/matryoshka-wrapping-overflow-leak-on.html#victim2">Using a similar method to sirdarckcat&rsquo;s</a>, we can shrink the width of the iframe to force the text to rewrap, and subtract the old width of the the line from the new width, giving us the width of the word that just wrapped.</p>
 
-<p>Note that since we need to force text wrapping to get these measurements, it&rsquo;s harder to steal text from fixed-width pages, or pages that display a horizontal scrollbar instead of wrapping text (like <code>view-source:</code> URIs.) Pages that use fixed-width fonts are also more difficult to analyze because characters do not have distinct widths, we can only determine the number of characters in the word.</p>
+<p>Note that since we need to force text wrapping to get these measurements, it&rsquo;s harder to steal text from fixed-width pages, or pages that display a horizontal scrollbar instead of wrapping text (like <code>view-source:</code> URIs.) Pages that use fixed-width fonts are also more difficult to analyze because characters do not have distinct widths, we can only determine the number of characters in a word.</p>
 
 <a name="Working.Examples"></a>
 <h1>Working Examples</h1>
