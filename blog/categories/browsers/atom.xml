@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Browsers | Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/blog/categories/browsers/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-02-05T22:19:00-04:00</updated>
+  <updated>2014-02-05T22:28:13-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -142,7 +142,7 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
 
 <p>Since we can tell how wide a line of text is, we can <a href="http://sirdarckcat.blogspot.com/2013/09/matryoshka-wrapping-overflow-leak-on.html#victim2">extract text using a similar method to sirdarckcat&rsquo;s</a>. First we measure how long the line is, then we make the iframe more narrow to force the text to wrap, then we subtract the new width of the the line from the old width, giving us the width of the word that just wrapped.</p>
 
-<p>Since most sites use variable-width fonts (&ldquo;O&rdquo; and &ldquo;i&rdquo; are different widths on this blog, for example,) small words have distinct widths that make them easy to pick out. With longer words, there may be a number of valid words with that width, however an attacker may be able to determine what word fits best using the context of the surrounding words.</p>
+<p>Since most sites use variable-width fonts (&ldquo;O&rdquo; and &ldquo;i&rdquo; are different widths on this blog, for example,) many small words have distinct widths that make them easy to pick out. With longer words, there may be a number of valid words with that width, however an attacker may be able to determine what word fits best using the context of the surrounding words.</p>
 
 <p>Note that since we need to force text wrapping to get these measurements, it&rsquo;s harder to steal text from fixed-width pages, or pages that display a horizontal scrollbar instead of wrapping text (like <code>view-source:</code> URIs.) Pages that use fixed-width fonts are also more difficult to analyze because characters do not have distinct widths, we can only determine the number of characters in a word.</p>
 
