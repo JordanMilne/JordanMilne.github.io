@@ -5,11 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>About Me - Defined Misbehaviour</title>
+  <title>My Bugs - Defined Misbehaviour</title>
   <meta name="author" content="Jordan Milne">
 
   
-  <meta name="description" content="About Me I&rsquo;m a self-taught programmer with a passion for web / browser security. Most of my spare time goes towards putting something together &hellip;">
+  <meta name="description" content="My Bugs I usually only write about bugs that I think are particularly interesting or fun, and I don&rsquo;t have time to write about everything. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://JordanMilne.github.io/about-me">
+  <link rel="canonical" href="http://JordanMilne.github.io/my-bugs">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
@@ -82,19 +82,40 @@
 <article role="article">
   
   <header>
-    <h1 class="entry-title">About Me</h1>
+    <h1 class="entry-title">My Bugs</h1>
     
   </header>
   
-  <p>I&rsquo;m a self-taught programmer with a passion for web / browser security. Most of my spare time goes towards putting something together or trying to make it come apart.</p>
+  <p>I usually only write about bugs that I think are particularly interesting or fun, and I don&rsquo;t have time to write about everything.</p>
 
-<p>I dream about timing attacks, info leaks, and same-origin policy violations.</p>
+<p>Still, for my own reference and anybody who&rsquo;s interested, here&rsquo;s a non-exhaustive list of public advisories attributed to me, issues with pending fixes are not listed unless disclosure deadlines were not met by vendor:</p>
 
-<p>Interested in collaborating or talking shop? Drop me a line!</p>
+<a name="L2014"></a>
+<h2>2014</h2>
 
 <ul>
-<li>Email: <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#100;&#101;&#x66;&#105;&#110;&#x65;&#x64;&#x6d;&#105;&#115;&#x62;&#x65;&#104;&#97;&#118;&#105;&#111;&#117;&#x72;&#64;&#115;&#x61;&#x79;&#110;&#x6f;&#x74;&#111;&#108;&#105;&#110;&#117;&#120;&#46;&#99;&#x6f;&#x6d;">&#x64;&#101;&#102;&#105;&#110;&#x65;&#x64;&#x6d;&#x69;&#115;&#x62;&#x65;&#104;&#x61;&#x76;&#105;&#111;&#117;&#114;&#64;&#115;&#97;&#121;&#110;&#111;&#116;&#111;&#x6c;&#105;&#x6e;&#117;&#120;&#x2e;&#99;&#111;&#109;</a></li>
-<li>LinkedIn: <a href="http://www.linkedin.com/in/jordanamilne">http://www.linkedin.com/in/jordanamilne</a></li>
+<li><a href="https://github.com/reddit/reddit/commit/47a677aba1a2079292e5361eecdc4394cf072d7b">Reddit: Information leak via redirect before auth check</a></li>
+<li><a href="https://github.com/reddit/reddit/compare/510aafe...497751dc96d27d0cc7a74d65a9df068eb98ae929">Reddit: Private / deleted comment leaks</a></li>
+<li><a href="https://github.com/reddit/reddit/compare/e27f7d3285d1970949230989661f16763eb0c3a6...58c66fbbcf5f937ee1171416e28c08eff20bc9ca">Reddit: 13x CSRF</a></li>
+<li><a href="https://www.mozilla.org/security/announce/2014/mfsa2014-05.html">Mozilla: Information disclosure with *FromPoint on iframes</a> (<a href="http://blog.saynotolinux.com/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/">Blog post</a>)</li>
+</ul>
+
+
+<a name="L2013"></a>
+<h2>2013</h2>
+
+<ul>
+<li><a href="https://github.com/reddit/reddit/commit/bb8f4b1b57274ca7723c8a0ffee6fcfccf5f7ff8">Reddit: Logout CSRF</a></li>
+<li><a href="https://github.com/reddit/reddit/commit/3b0bf9d755f3620525bc4671961d1a7c42ec1d17">Reddit: Friend/bannote CSRF</a></li>
+<li><a href="https://github.com/reddit/reddit/commit/00df060e4777f13d0db4b708516297ef32bd9233">Reddit: Multi description CSRF</a></li>
+<li><a href="https://github.com/reddit/reddit/commit/2e9383e582635ebb0af619e8ae54b9bc5212cb9f">Reddit: Insufficient clickjacking prevention</a></li>
+<li><a href="https://hackerone.com/reports/862">Yahoo: Cross-domain theft on *.yahoo.com via hk.promotions.yahoo.com</a></li>
+<li><a href="https://hackerone.com/reports/894">Yahoo: XSS on edit.travel.yahoo.com</a></li>
+<li><a href="https://github.com/reddit/reddit/commit/2f5d8cd4faf5cf601a2ac6607a57b4e2d2ed2da8">Reddit: Response splitting due to redirect to PATH_INFO and lack of newline sanitization</a></li>
+<li><a href="https://github.com/reddit/reddit/commit/c565694c99dca744b8b766eb30f7a9d33ef84ab4">Reddit: Private subreddit info leak via search API</a></li>
+<li><a href="https://github.com/reddit/reddit/commit/b1dc27284712471901cb1323e0b18eac3b62784e">Reddit: User and private subreddit info leaks via private data in JS embeds</a></li>
+<li><a href="http://www.ifixit.com/Info/responsible_disclosure#Section_2013">Ifixit: Lack of sanitization in parts of wiki template engine</a></li>
+<li><a href="https://github.com/RequestPolicy/requestpolicy/pull/409">RequestPolicy: Bypass of whitelist by wrapping underlying transport URI in jar: URI</a> (<a href="http://blog.saynotolinux.com/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/">Blog post</a>)</li>
 </ul>
 
 
@@ -104,7 +125,7 @@
       
         <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://JordanMilne.github.io/about-me/index.html" data-via="" data-counturl="http://JordanMilne.github.io/about-me/index.html" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://JordanMilne.github.io/my-bugs/index.html" data-via="" data-counturl="http://JordanMilne.github.io/my-bugs/index.html" >Tweet</a>
   
   
   
