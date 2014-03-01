@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Flash | Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/blog/categories/flash/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-03-01T18:32:57-04:00</updated>
+  <updated>2014-03-01T18:53:26-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -24,6 +24,9 @@
 <h2>Initial Discovery</h2>
 
 <p>Since Yahoo <a href="http://yahoodevelopers.tumblr.com/post/65622522325/the-bug-bounty-program-is-now-live">recently revamped their Responsible Disclosure program</a>, I figured I&rsquo;d have a go at finding some vulnerabilities. All of <code>*.yahoo.com</code> is in scope, and Yahoo has a <em>lot</em> of legacy behind it, so I started going through the more obscure subdomains manually. One of the subdomains I looked at a lot was <code>hk.promotions.yahoo.com</code>. It&rsquo;s a good place to look because it has lots of PHP scripts and Flash, it looks like it wasn&rsquo;t done by Yahoo&rsquo;s core devs, and most auditors aren&rsquo;t looking there since its content is mostly in Chinese.</p>
+
+<!--more-->
+
 
 <p>I ended up on <code>http://hk.promotions.yahoo.com/petshow2011/</code>, apparently a page for a Hongkongese pet show that happened in 2011:</p>
 

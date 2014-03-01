@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Browsers | Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/blog/categories/browsers/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-03-01T18:32:57-04:00</updated>
+  <updated>2014-03-01T18:53:26-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -23,11 +23,14 @@ so I&rsquo;m always on the lookout for novel cross-domain data theft vectors. To
 the discovery and exploitation of such a bug: A timing attack on Firefox&rsquo;s <code>document.elementFromPoint</code> and <code>document.caretPositionFromPoint</code> implementations.</p>
 
 <a name="Initial.Discovery"></a>
-<h1>Initial Discovery</h1>
+<h2>Initial Discovery</h2>
 
 <p>I was looking at ways to automatically exploit another bug that required user interaction when I noticed <a href="https://developer.mozilla.org/en-US/docs/Web/API/document.elementFromPoint">elementFromPoint</a> and
 <a href="https://developer.mozilla.org/en-US/docs/Web/API/document.caretPositionFromPoint">caretPositionFromPoint</a> on the MDN.
 Curious as to how they behaved with frames, I did a little testing.</p>
+
+<!--more-->
+
 
 <p>I made an example page to test:</p>
 
@@ -88,7 +91,7 @@ return true;
 ```</p>
 
 <a name="Digging.Deeper"></a>
-<h1>Digging Deeper</h1>
+<h2>Digging Deeper</h2>
 
 <p>Knowing the page&rsquo;s size and whether certain elements are present is nice, but I wanted more. I remembered <a href="http://contextis.co.uk/research/white-papers/pixel-perfect-timing-attacks-html5/">Paul Stone&rsquo;s excellent paper about timing attacks on browser renderers</a> and figured a timing attack might help us here.</p>
 
@@ -134,7 +137,7 @@ return runTimes[(NUM_SAMPLES / 2) | 0];
 the same timing attack as <code>caretPositionFromPoint</code>.</p>
 
 <a name="Stealing.Text"></a>
-<h1>Stealing Text</h1>
+<h2>Stealing Text</h2>
 
 <p>So we can infer quite a bit about the framed document from the timing information, but can we actually steal text from it? Maybe, with a lot of work, depending on the page&rsquo;s styling.</p>
 
@@ -147,7 +150,7 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
 <p>Note that since we need to force text wrapping to get these measurements, it&rsquo;s harder to steal text from fixed-width pages, or pages that display a horizontal scrollbar instead of wrapping text (like <code>view-source:</code> URIs.) Pages that use fixed-width fonts are also more difficult to analyze because characters do not have distinct widths, we can only determine the number of characters in a word.</p>
 
 <a name="Working.Examples"></a>
-<h1>Working Examples</h1>
+<h2>Working Examples</h2>
 
 <p>Note that the last Firefox version these actually work in is <code>26</code>, if you want to try them out you&rsquo;ll have to find a download for it.</p>
 
@@ -158,12 +161,12 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
 
 
 <a name="The.Fix"></a>
-<h1>The Fix</h1>
+<h2>The Fix</h2>
 
 <p>Judging from <a href="https://hg.mozilla.org/mozilla-central/rev/cdbe5779c728">Robert O'Callahan&rsquo;s fix</a>, it looks like Firefox was using a general hit testing function that descended cross-document for both <code>elementFromPoint</code> and <code>caretPositionFromPoint</code>. The fix was to disable cross-document descent in the hit testing function when called by either <code>elementFromPoint</code> or <code>caretPositionFromPoint</code>.</p>
 
 <a name="Disclosure.Timeline"></a>
-<h1>Disclosure Timeline</h1>
+<h2>Disclosure Timeline</h2>
 
 <ul>
 <li>Dec. 11 2013: Discovered <code>caretPositionFromPoint</code> leaked info through <code>offsetNode</code> accessibility</li>
