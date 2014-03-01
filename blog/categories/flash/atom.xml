@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Flash | Defined Misbehaviour]]></title>
+  <link href="http://JordanMilne.github.io/blog/categories/flash/atom.xml" rel="self"/>
+  <link href="http://JordanMilne.github.io/"/>
+  <updated>2014-03-01T14:57:51-04:00</updated>
+  <id>http://JordanMilne.github.io/</id>
+  <author>
+    <name><![CDATA[Jordan Milne]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Yahoo's Pet Show of Horrors: Leaking a User's Emails Crossdomain]]></title>
+    <link href="http://JordanMilne.github.io/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/"/>
+    <updated>2014-03-01T01:12:17-04:00</updated>
+    <id>http://JordanMilne.github.io/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email</id>
+    <content type="html"><![CDATA[<p>I&rsquo;m taking a break from browser security posts while I wait for vendors patch, so the next few posts are probably going to be about web app security. Hopefully I should have some posts about architectural flaws in browsers / plugins by next month.</p>
+
+<a name="Initial.Discovery"></a>
+<h1>Initial Discovery</h1>
+
+<p>Since Yahoo <a href="http://yahoodevelopers.tumblr.com/post/65622522325/the-bug-bounty-program-is-now-live">recently revamped their Responsible Disclosure program</a>, I figured I&rsquo;d have a go at finding some vulnerabilities. All of <code>*.yahoo.com</code> is in scope, and Yahoo has a <em>lot</em> of legacy behind it, so I started going through the more obscure subdomains manually. One of the subdomains I looked at a lot was <code>hk.promotions.yahoo.com</code>. It&rsquo;s a good place to look because it has lots of PHP scripts and Flash, it looks like it wasn&rsquo;t done by Yahoo&rsquo;s core devs, and most auditors aren&rsquo;t looking there since its content is mostly in Chinese.</p>
+
+<p>I ended up on <code>http://hk.promotions.yahoo.com/petshow2011/</code>, apparently a page for a Hongkongese pet show that happened in 2011:</p>
+
+<p><a href="/images/posts/petshow/petshow0.png"><img class="center" src="/images/posts/petshow/petshow0.png" width="640" height="480"></a></p>
+
+<p>As you can see from the reqeust log, the flash document on the page was requesting data from another domain through a crossdomain proxy: <code>http://hk.promotions.yahoo.com/petshow2011/php/getImages.php?file=&lt;url&gt;</code>.</p>
+
+<p>Crossdomain proxies are generally goldmines for vulnerabilities, and this one&rsquo;s no different. First of all, it doesn&rsquo;t whitelist the URLs that we may make requests to, and the proxy is positioned inside Yahoo&rsquo;s internal network, so we can have it proxy out resources that would normally be inacessible. I tested with a <code>.corp.yahoo.com</code> URL I found on google, and ended up with some uninteresting, but normally inaccessible search statistics. Other SSRF attacks were likely posible, but I didn&rsquo;t poke it too much other than to verify that local file disclosure wasn&rsquo;t possible.</p>
+
+<p>Second, since the proxy doesn&rsquo;t set a <code>Content-Type</code> on the response and we control the response body, we&rsquo;ve got XSS on <code>hk.promotions.yahoo.com</code> thanks to type sniffing!</p>
+
+<p><a href="/images/posts/petshow/petshow2.png"><img class="center" src="/images/posts/petshow/petshow2.png" width="640" height="480"></a></p>
+
+<p><a href="/images/posts/petshow/petshow3.png"><img class="center" src="/images/posts/petshow/petshow3.png"></a></p>
+
+<a name="Escalating.Access"></a>
+<h1>Escalating Access</h1>
+
+<p>That&rsquo;s nice and all, but XSS on a mostly-static subdomain isn&rsquo;t that interesting to me. Now, remember that we control the <em>entire</em> body of the proxy&rsquo;s response and that there&rsquo;s no <code>Content-Type</code>. That means we can <em>also</em> proxy an SWF and have it be same-origin with <code>hk.promotions.yahoo.com</code>. Why&rsquo;s a SWF any more useful to us than HTML? Because of overly-permissive <a href="http://kb2.adobe.com/cps/142/tn_14213.html">crossdomain.xml rules</a>.</p>
+
+<p>Flash checks for a <code>&lt;destination domain&gt;/crossdomain.xml</code> file before attempting a crossorigin request, to check if requests from the sender&rsquo;s origin are permitted. For example, if you wanted to allow any subdomain of <code>yahoo.com</code> to make requests to your subdomain, you might put a rule like this in your <code>crossdomain.xml</code>:</p>
+
+<p><code>xml
+&lt;allow-access-from domain="*.yahoo.com"/&gt;
+</code></p>
+
+<p>That&rsquo;s probably overly permissive, <code>*.yahoo.com</code> is a <em>lot</em> of attack surface, but let&rsquo;s take a look at what Yahoo actually has in their <code>crossdomain.xml</code>s.</p>
+
+<p><a href="http://finance.yahoo.com/crossdomain.xml">finance.yahoo.com</a>:</p>
+
+<p>```xml
+&lt;cross-domain-policy></p>
+
+<pre><code>&lt;allow-access-from domain="*.yahoo.com"/&gt;
+&lt;allow-access-from domain="us.js2.yimg.com"/&gt;
+&lt;allow-access-from domain="*.yimg.com"/&gt;
+</code></pre>
+
+<p>&lt;/cross-domain-policy>
+```</p>
+
+<p><a href="http://www.flickr.com/crossdomain.xml">www.flickr.com</a>:</p>
+
+<p>```xml
+&lt;cross-domain-policy></p>
+
+<pre><code>&lt;allow-access-from domain="*.yahoo.com"/&gt;
+&lt;allow-access-from domain="l.yimg.com"/&gt;
+&lt;allow-access-from domain="d.yimg.com"/&gt;
+&lt;allow-access-from domain="s.yimg.com"/&gt;
+&lt;site-control permitted-cross-domain-policies="master-only"/&gt;
+</code></pre>
+
+<p>&lt;/cross-domain-policy>
+```</p>
+
+<p><a href="http://ca-mg5.mail.yahoo.com/crossdomain.xml">ca-mg5.mail.yahoo.com</a> (webmail server, returns valid <code>crossdomain.xml</code> when logged in):</p>
+
+<p>```xml
+&lt;cross-domain-policy></p>
+
+<pre><code>&lt;allow-access-from domain="*.yahoo.com" secure="false"/&gt;
+&lt;allow-access-from domain="l.yimg.com" secure="false"/&gt;
+&lt;allow-access-from domain="s.yimg.com" secure="false"/&gt;
+</code></pre>
+
+<p>&lt;/cross-domain-policy>
+```</p>
+
+<p>YMail actually has the <em>least</em> secure crossdomain policy of any of the subdomains that I checked. That <code>secure="false"</code> will allow SWFs served over HTTP to read resources only served over HTTPS, making the forced HTTPS a lot less useful. Per Adobe, <a href="http://www.adobe.com/devnet/adobe-media-server/articles/cross-domain-xml-for-streaming.html#articlecontentAdobe_numberedheader_0">&ldquo;Using false in an HTTPS policy file is not recommended because this compromises the security offered by HTTPS.&rdquo;</a></p>
+
+<a name="It.s.Proxies.All.the.Way.Down"></a>
+<h1>It&rsquo;s Proxies All the Way Down</h1>
+
+<p>Well, now we know we can get an arbitrary SWF same-origin with a subdomain of <code>yahoo.com</code>, and we know that SWF can read from a number of subdomains on <code>yahoo.com</code>, let&rsquo;s get some emails!</p>
+
+<p>First, we need to pick the SWF to proxy. The obvious choice for someone who doesn&rsquo;t know Flash well is a <a href="https://github.com/borisreitman/CrossXHR">SWF&lt;->JS XHR proxy</a>, so I went with that (and did some overzealous redaction:)</p>
+
+<p><a href="/images/posts/petshow/petshow4.png"><img class="center" src="/images/posts/petshow/petshow4.png" width="640"></a></p>
+
+<p>Looks like our proxied proxy works, the response body includes all of my test account&rsquo;s auth tokens and personal info. One of those tokens allows us to access a JSON endpoint that lists our e-mails:</p>
+
+<p><a href="/images/posts/petshow/petshow6.png"><img class="center" src="/images/posts/petshow/petshow6.png" width="640"></a></p>
+
+<p>and we can use those message IDs to pull up specific emails from the user&rsquo;s inbox:</p>
+
+<p><a href="/images/posts/petshow/petshow7.png"><img class="center" src="/images/posts/petshow/petshow7.png" width="640"></a></p>
+
+<p>and since we can read pages containing CSRF tokens, we can delete the user&rsquo;s emails, send emails as the current user, etc:</p>
+
+<p><a href="/images/posts/petshow/petshow8.png"><img class="center" src="/images/posts/petshow/petshow8.png" width="640"></a></p>
+
+<p>Funky.</p>
+
+<a name="The.Fix"></a>
+<h1>The Fix</h1>
+
+<p>Well, the affected page was for a Hongkongese pet show that happened in 2011, so the fix was removing the page and its associated crossdomain proxy. I&rsquo;m disappointed that the <code>crossdomain.xml</code> rules are still as loose as they are, but I don&rsquo;t think that&rsquo;s getting changed anytime soon. Subsequent reports mentioning the <code>crossdomain.xml</code> rules have been marked WONTFIX.</p>
+
+<a name="TL.DR"></a>
+<h1>TL;DR</h1>
+
+<p>There was crossdomain data leakage due to a misconfigured crossdomain proxy and overly-permissive <code>crossdomain.xml</code> rules. One was able to leak the emails of the current user, and do anything the user could do from YMail just by having them visit an attacker-controlled page.</p>
+
+<p>This instance of the issue is fixed, but the <code>crossdomain.xml</code> rules are still overly-permissive.</p>
+
+<a name="Disclosure.Timeline"></a>
+<h1>Disclosure Timeline</h1>
+
+<ul>
+<li>Nov. 19 2013: Discovered that crossdomain proxy leaked internal resources</li>
+<li>Nov. 20 2013: Reported issue to Yahoo</li>
+<li>Nov. 23 2013: Updated Yahoo on the XSS / crossdomain leakage / crossdomain.xml issues</li>
+<li>Nov. 25 2013: Yahoo acknowledges report</li>
+<li>Nov. 29 2013: Yahoo fixes issue</li>
+<li>Feb. 03 2014: Yahoo confirms report, bounty elligibility</li>
+</ul>
+
+
+<a name="Further.Reading"></a>
+<h1>Further Reading</h1>
+
+<ul>
+<li><a href="https://gist.github.com/anonymous/5c2b1440b37d7d715592">An example of a vulnerable crossdomain proxy</a></li>
+<li><a href="https://docs.google.com/document/d/1v1TkWZtrhzRLy0bYXBcdLUedXGb9njTNIJXa3u9akHM/edit?pli=1#">SSRF Bible</a></li>
+<li><a href="http://code.google.com/p/browsersec/wiki/Part2#Same-origin_policy_for_Flash">Flash same-origin policy primer</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>
