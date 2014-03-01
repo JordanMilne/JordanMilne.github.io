@@ -120,7 +120,7 @@
 
 <p><a href="/images/posts/petshow/petshow0.png"><img class="center" src="/images/posts/petshow/petshow0.png" width="640" height="480"></a></p>
 
-<p>As you can see from the reqeust log, the flash document on the page was requesting data from another domain through a crossdomain proxy: <code>http://hk.promotions.yahoo.com/petshow2011/php/getImages.php?file=&lt;url&gt;</code>.</p>
+<p>As you can see from the request log, something on the page was requesting data from another domain through a crossdomain proxy: <code>http://hk.promotions.yahoo.com/petshow2011/php/getImages.php?file=&lt;url&gt;</code>.</p>
 
 <p>Crossdomain proxies are generally goldmines for vulnerabilities, and this one&rsquo;s no different. First of all, it doesn&rsquo;t whitelist the URLs that we may make requests to, and the proxy is positioned inside Yahoo&rsquo;s internal network, so we can have it proxy out resources that would normally be inacessible. I tested with a <code>.corp.yahoo.com</code> URL I found on google, and ended up with some uninteresting, but normally inaccessible search statistics. Other SSRF attacks were likely posible, but I didn&rsquo;t poke it too much other than to verify that local file disclosure wasn&rsquo;t possible.</p>
 
