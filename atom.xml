@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-03-01T15:02:17-04:00</updated>
+  <updated>2014-03-01T15:12:17-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -109,7 +109,7 @@
 
 <p>Well, now we know we can get an arbitrary SWF same-origin with a subdomain of <code>yahoo.com</code>, and we know that SWF can read from a number of subdomains on <code>yahoo.com</code>, let&rsquo;s get some emails!</p>
 
-<p>First, we need to pick the SWF to proxy. The obvious choice for someone who doesn&rsquo;t know Flash well is a <a href="https://github.com/borisreitman/CrossXHR">SWF&lt;->JS XHR proxy</a>, so I went with that (and did some overzealous redaction:)</p>
+<p>First, we need to pick the SWF to proxy. The obvious choice for someone who doesn&rsquo;t know Flash well is a <a href="https://github.com/borisreitman/CrossXHR">SWF&lt;->JS XHR proxy</a>. These allow you to proxy requests from JS through a specialized SWF on another domain. Here was the result, with some overzealous redaction:</p>
 
 <p><a href="http://JordanMilne.github.io/images/posts/petshow/petshow4.png"><img class="center" src="http://JordanMilne.github.io/images/posts/petshow/petshow4.png" width="640"></a></p>
 
