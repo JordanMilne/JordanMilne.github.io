@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Yahoo | Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/blog/categories/yahoo/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-03-01T17:05:40-04:00</updated>
+  <updated>2014-03-01T18:32:57-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -21,7 +21,7 @@
     <content type="html"><![CDATA[<p>I&rsquo;m taking a break from browser security posts while I wait for vendors to patch, so the next few posts are probably going to be about web app security. Hopefully I should have some posts about architectural flaws in browsers / plugins by next month.</p>
 
 <a name="Initial.Discovery"></a>
-<h1>Initial Discovery</h1>
+<h2>Initial Discovery</h2>
 
 <p>Since Yahoo <a href="http://yahoodevelopers.tumblr.com/post/65622522325/the-bug-bounty-program-is-now-live">recently revamped their Responsible Disclosure program</a>, I figured I&rsquo;d have a go at finding some vulnerabilities. All of <code>*.yahoo.com</code> is in scope, and Yahoo has a <em>lot</em> of legacy behind it, so I started going through the more obscure subdomains manually. One of the subdomains I looked at a lot was <code>hk.promotions.yahoo.com</code>. It&rsquo;s a good place to look because it has lots of PHP scripts and Flash, it looks like it wasn&rsquo;t done by Yahoo&rsquo;s core devs, and most auditors aren&rsquo;t looking there since its content is mostly in Chinese.</p>
 
@@ -40,7 +40,7 @@
 <p><a href="/images/posts/petshow/petshow3.png"><img class="center" src="/images/posts/petshow/petshow3.png"></a></p>
 
 <a name="Escalating.Access"></a>
-<h1>Escalating Access</h1>
+<h2>Escalating Access</h2>
 
 <p>That&rsquo;s nice and all, but XSS on a mostly-static subdomain isn&rsquo;t that interesting to me. Now, remember that we control the <em>entire</em> body of the proxy&rsquo;s response and that there&rsquo;s no <code>Content-Type</code>. That means we can <em>also</em> proxy an SWF and have it be same-origin with <code>hk.promotions.yahoo.com</code>. Why&rsquo;s a SWF any more useful to us than HTML? Because of overly-permissive <a href="http://kb2.adobe.com/cps/142/tn_14213.html">crossdomain.xml rules</a>.</p>
 
@@ -96,7 +96,7 @@
 <p>YMail actually has the <em>least</em> secure crossdomain policy of any of the subdomains that I checked. That <code>secure="false"</code> will allow SWFs served over HTTP to read resources only served over HTTPS, making the forced HTTPS a lot less useful. Per Adobe, <a href="http://www.adobe.com/devnet/adobe-media-server/articles/cross-domain-xml-for-streaming.html#articlecontentAdobe_numberedheader_0">&ldquo;Using false in an HTTPS policy file is not recommended because this compromises the security offered by HTTPS.&rdquo;</a></p>
 
 <a name="It.s.Proxies.All.the.Way.Down"></a>
-<h1>It&rsquo;s Proxies All the Way Down</h1>
+<h2>It&rsquo;s Proxies All the Way Down</h2>
 
 <p>Well, now we know we can get an arbitrary SWF same-origin with a subdomain of <code>yahoo.com</code>, and we know that SWF can read from a number of subdomains on <code>yahoo.com</code>, let&rsquo;s get some emails!</p>
 
@@ -119,19 +119,19 @@
 <p>Funky.</p>
 
 <a name="The.Fix"></a>
-<h1>The Fix</h1>
+<h2>The Fix</h2>
 
 <p>Well, the affected page was for a Hongkongese pet show that happened in 2011, so the fix was removing the page and its associated crossdomain proxy. I&rsquo;m disappointed that the <code>crossdomain.xml</code> rules are still as loose as they are, but I don&rsquo;t think that&rsquo;s getting changed anytime soon. Subsequent reports mentioning the <code>crossdomain.xml</code> rules have been marked WONTFIX.</p>
 
 <a name="TL.DR"></a>
-<h1>TL;DR</h1>
+<h2>TL;DR</h2>
 
-<p>There was crossdomain data leakage due to a misconfigured crossdomain proxy and overly-permissive <code>crossdomain.xml</code> rules. One was able to leak the emails of the current user, and do anything the user could do from YMail just by having them visit an attacker-controlled page.</p>
+<p>There were SSRF and crossdomain data leakage issues due to a misconfigured crossdomain proxy and overly-permissive <code>crossdomain.xml</code> rules. One was able to leak the emails of the current user, and do anything the user could do from YMail just by having them visit an attacker-controlled page.</p>
 
 <p>This instance of the issue is fixed, but the <code>crossdomain.xml</code> rules are still overly-permissive.</p>
 
 <a name="Disclosure.Timeline"></a>
-<h1>Disclosure Timeline</h1>
+<h2>Disclosure Timeline</h2>
 
 <ul>
 <li>Nov. 19 2013: Discovered that crossdomain proxy leaked internal resources</li>
@@ -144,7 +144,7 @@
 
 
 <a name="Further.Reading"></a>
-<h1>Further Reading</h1>
+<h2>Further Reading</h2>
 
 <ul>
 <li><a href="https://gist.github.com/anonymous/5c2b1440b37d7d715592">An example of a vulnerable crossdomain proxy</a></li>
