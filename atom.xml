@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-03-01T14:57:51-04:00</updated>
+  <updated>2014-03-01T15:00:13-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -18,7 +18,7 @@
     <link href="http://JordanMilne.github.io/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/"/>
     <updated>2014-03-01T01:12:17-04:00</updated>
     <id>http://JordanMilne.github.io/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email</id>
-    <content type="html"><![CDATA[<p>I&rsquo;m taking a break from browser security posts while I wait for vendors patch, so the next few posts are probably going to be about web app security. Hopefully I should have some posts about architectural flaws in browsers / plugins by next month.</p>
+    <content type="html"><![CDATA[<p>I&rsquo;m taking a break from browser security posts while I wait for vendors to patch, so the next few posts are probably going to be about web app security. Hopefully I should have some posts about architectural flaws in browsers / plugins by next month.</p>
 
 <a name="Initial.Discovery"></a>
 <h1>Initial Discovery</h1>
