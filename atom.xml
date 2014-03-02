@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-03-01T22:41:26-04:00</updated>
+  <updated>2014-03-02T13:34:54-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -128,7 +128,7 @@
 
 <p><a href="http://JordanMilne.github.io/images/posts/petshow/petshow8.png"><img class="center" src="http://JordanMilne.github.io/images/posts/petshow/petshow8.png" width="640"></a></p>
 
-<p>Funky. The most obvious application of this attack would be to determine the user&rsquo;s email, initiate a password on any &ldquo;interesting&rdquo; sites, read the password reset URL from their email, then delete the email; but there&rsquo;s plenty of others.</p>
+<p>Funky. The most obvious application of this attack would be to determine the user&rsquo;s email, initiate a password reset on any &ldquo;interesting&rdquo; sites, read the password reset URL from their email, then delete the email; but there&rsquo;s plenty of others.</p>
 
 <a name="The.Fix"></a>
 <h2>The Fix</h2>
