@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Flash | Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/blog/categories/flash/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-03-02T22:20:00-04:00</updated>
+  <updated>2014-03-02T22:27:54-04:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -47,7 +47,7 @@
 
 <p>That&rsquo;s nice and all, but XSS on a mostly-static subdomain isn&rsquo;t that interesting to me. Now, remember that we control the <em>entire</em> body of the proxy&rsquo;s response and that there&rsquo;s no <code>Content-Type</code>. That means we can <em>also</em> proxy an SWF and have it be same-origin with <code>hk.promotions.yahoo.com</code>. Why&rsquo;s a SWF any more useful to us than HTML? Because of overly-permissive <a href="http://kb2.adobe.com/cps/142/tn_14213.html">crossdomain.xml rules</a>.</p>
 
-<p>Flash checks for a <code>&lt;destination domain&gt;/crossdomain.xml</code> file before attempting a crossorigin request, to see if SWFs from the sender&rsquo;s origin may read the response (among other things, see <a href="#Further.Reading">&ldquo;Further Reading&rdquo;</a>.) For example, if you wanted to allow SWFs on any subdomain of <code>yahoo.com</code> to do crossdomain reads to your subdomain, you might put a rule like this in your <code>crossdomain.xml</code>:</p>
+<p>Flash checks for a <code>&lt;destination domain&gt;/crossdomain.xml</code> file before attempting a crossorigin request, to see if SWFs from the sender&rsquo;s origin may read the response (among other things, see <a href="#Further.Reading">&ldquo;Further Reading&rdquo;</a>.) For example, if you wanted to allow SWFs on any subdomain of <code>yahoo.com</code> to do crossdomain reads to your domain, you might put a rule like this in your <code>crossdomain.xml</code>:</p>
 
 <p><code>xml
 &lt;allow-access-from domain="*.yahoo.com"/&gt;
