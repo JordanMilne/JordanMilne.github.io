@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-04-12T00:32:19-03:00</updated>
+  <updated>2014-04-12T00:55:25-03:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -224,7 +224,7 @@
 
 <p>This bug required fixes in a number of places to keep it fully closed. First, <a href="https://github.com/reddit/snudown/commit/62bfa4ad673c4f19683ed91c5ebb093bbe9f581d">Snudown&rsquo;s HTML sanitization was changed</a> to first parse the attributes, then unambiguously reserialize its interpretation. That fix was then <a href="https://github.com/honestbleeps/Reddit-Enhancement-Suite/commit/de3f84cac524c473e08d72517dc1d75f26906507">ported to SnuOwnd&rsquo;s JS implementation</a>.</p>
 
-<p>Secondly, RES was changed to use a <a href="https://github.com/honestbleeps/Reddit-Enhancement-Suite/commit/a4fb73b6d90bed5701e3a3672b6ee4a9da78d60a">custom HTML sanitizer</a> based on DOMParser since things like <code>href</code> sanitization were out of scope for Snudown. I&rsquo;m not super happy with this filter, but it had to go in due to time constraints, and I&rsquo;m looking at switching it to Google Caja in the future.</p>
+<p>Secondly, RES was changed to use a <a href="https://github.com/honestbleeps/Reddit-Enhancement-Suite/commit/a4fb73b6d90bed5701e3a3672b6ee4a9da78d60a">custom HTML sanitizer</a> based on DOMParser since things like <code>href</code> sanitization were out of scope for Snudown. I&rsquo;m not super happy with this filter, and I think <a href="http://code.google.com/p/google-caja/wiki/JsHtmlSanitizer">Google Caja</a> should be used in the future, but this one had to go in due to time constraints.</p>
 
 <p>Third, since the issue was so trivial to exploit, and had such high impact, it was necessary to block users still on vulnerable versions of RES from opening expandos to prevent an XSS worm from spreading. reddit ended up doing this on their end by detecting attempts to open the expandos and blocking it based on a version number RES places in the DOM:</p>
 
