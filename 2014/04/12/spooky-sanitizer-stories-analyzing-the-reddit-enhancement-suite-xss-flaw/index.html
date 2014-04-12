@@ -383,7 +383,7 @@
 <li>If you don&rsquo;t have to insert untrusted HTML into the DOM, it&rsquo;s best not to. For example, most of the image titles and captions aren&rsquo;t meant to be treated as HTML. Putting the rest of the content in a sandboxed iframe would also have mitigated the issue, and I&rsquo;ve recommended doing that in a future version of RES.</li>
 <li>Be careful about messing with the page&rsquo;s DOM at all if you don&rsquo;t have to, the page can see everything that you add or remove.</li>
 <li>Sanitizing untrusted HTML is tricky business. If you need to roll your own sanitizer (and please don&rsquo;t), make sure that you fully parse the document, then reserialize it so it&rsquo;s unambiguous across parsers. Checking that it looks sane in your parser is not enough.</li>
-<li>For owners of popular web platforms, it may make sense to audit extensions / third party clients targeted at your users to reduce the amount of cleanup needed should they get exploited.</li>
+<li>For developers of popular web platforms: It might make sense to audit extensions / third party clients targeted at your users to reduce the amount of cleanup needed should they get exploited.</li>
 </ul>
 
 
