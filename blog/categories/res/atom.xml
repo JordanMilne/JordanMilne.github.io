@@ -4,7 +4,7 @@
   <title><![CDATA[Category: RES | Defined Misbehaviour]]></title>
   <link href="http://JordanMilne.github.io/blog/categories/res/atom.xml" rel="self"/>
   <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-04-12T00:26:45-03:00</updated>
+  <updated>2014-04-12T00:27:33-03:00</updated>
   <id>http://JordanMilne.github.io/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -21,12 +21,12 @@
     <content type="html"><![CDATA[<a name="TL.DR"></a>
 <h2>TL;DR</h2>
 
-<p>The library RES (a browser extension for reddit users) used for HTML sanitization had a bug that bit them pretty hard, enabling DOM-based XSS of some 1.5~ million reddit users. RES pushed out a fixed version, and reddit deployed a script to prevent users of the old version from accidentally getting exploited; thus preventing an XSS worm.</p>
+<p>The library that <a href="http://redditenhancementsuite.com/">Reddit Enhancement Suite</a> (a browser extension for reddit users) used for HTML sanitization had a bug that bit them pretty hard, enabling DOM-based XSS of some 1.5~ million reddit users. RES pushed out a fixed version, and reddit deployed a script to prevent users of the old version from accidentally getting exploited; thus preventing an XSS worm.</p>
 
 <a name="Introduction"></a>
 <h2>Introduction</h2>
 
-<p>If you&rsquo;re a user of <a href="http://redditenhancementsuite.com/">Reddit Enhancement Suite</a>, chances are you recently saw this big scary alert() box when you tried to click an expando button:</p>
+<p>If you&rsquo;re a user of Reddit Enhancement Suite, chances are you recently saw this big scary alert() box when you tried to click an expando button:</p>
 
 <p><a href="/images/posts/res-xss/alert.png"><img class="center" src="/images/posts/res-xss/alert.png"></a></p>
 
