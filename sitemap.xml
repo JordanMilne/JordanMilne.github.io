@@ -25,8 +25,14 @@
         <lastmod>2014-03-02T22:27:47-04:00</lastmod>
     </url>
     <url>
+        <loc>
+            http://JordanMilne.github.io/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/
+        </loc>
+        <lastmod>2014-04-12T00:06:06-03:00</lastmod>
+    </url>
+    <url>
         <loc>http://JordanMilne.github.io/my-bugs/</loc>
-        <lastmod>2014-03-01T19:42:19-04:00</lastmod>
+        <lastmod>2014-04-11T01:30:18-03:00</lastmod>
     </url>
     <url>
         <loc>http://JordanMilne.github.io/about-me/</loc>
@@ -38,10 +44,10 @@
     </url>
     <url>
         <loc>http://JordanMilne.github.io/blog/archives/</loc>
-        <lastmod>2014-03-02T22:27:47-04:00</lastmod>
+        <lastmod>2014-04-12T00:06:06-03:00</lastmod>
     </url>
     <url>
         <loc>http://JordanMilne.github.io/</loc>
-        <lastmod>2014-03-02T22:27:47-04:00</lastmod>
+        <lastmod>2014-04-12T00:06:06-03:00</lastmod>
     </url>
 </urlset>

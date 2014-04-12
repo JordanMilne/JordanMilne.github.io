@@ -9,7 +9,7 @@
   <meta name="author" content="Jordan Milne">
 
   
-  <meta name="description" content="I&rsquo;m taking a break from browser security posts while I wait for vendors to patch, so the next few posts are probably going to be about web app &hellip;">
+  <meta name="description" content="TL;DR The library RES used for HTML sanitization had a bug that bit them pretty hard, enabling DOM-based XSS of some 1.5~ million reddit users. RES &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -80,6 +80,60 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/">Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-04-12T00:04:22-03:00" pubdate data-updated="true">Apr 12<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><a name="TL.DR"></a>
+<h2>TL;DR</h2>
+
+<p>The library RES used for HTML sanitization had a bug that bit them pretty hard, enabling DOM-based XSS of some 1.5~ million reddit users. RES pushed out a fixed version, and reddit deployed a script to prevent users of the old version from accidentally getting exploited; thus preventing an XSS worm.</p>
+
+<p>If you&rsquo;re a user of <a href="http://redditenhancementsuite.com/">Reddit Enhancement Suite</a>, chances are you recently saw this big scary alert() box when you tried to click an expando button:</p>
+
+<p><a href="/images/posts/res-xss/alert.png"><img class="center" src="/images/posts/res-xss/alert.png"></a></p>
+
+<p>For those who aren&rsquo;t familiar with RES, an expando is an inline preview of offsite content, or content that would normally require a clickthrough, that can be viewed by pressing an &ldquo;expando&rdquo; button:</p>
+
+<p><a href="/images/posts/res-xss/expandos.jpg"><img class="center" src="/images/posts/res-xss/expandos.jpg"></a></p>
+
+<p>A few people have asked questions like &ldquo;why am I getting that alert?&rdquo;, &ldquo;what exactly is this bug?&rdquo;, &ldquo;why can&rsquo;t I just use the vulnerable version anyways?&rdquo;. Rather than respond to each question separately, I decided to write something that would hopefully answer everyone&rsquo;s questions at once.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -293,6 +347,10 @@ can be verified through the network pane in Firefox&rsquo;s dev tools. A limited
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/">Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite</a>
+      </li>
     
       <li class="post">
         <a href="/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">Yahoo&#8217;s Pet Show of Horrors: Leaking a User&#8217;s Emails Crossdomain</a>
