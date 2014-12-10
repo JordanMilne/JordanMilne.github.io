@@ -217,7 +217,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>As you can see, the code makes a request to <code>this.dataPath</code> concatenated with <code>this.exteriorXML1</code>.  When it gets a response, it parses it as XML, and stores the result in <code>this.DATA3</code>. But we control all 3 of those members, and can both read from <em>and</em> write to them from .swfs on our domain because they use the <code>public</code> access modifier, and the .swf&rsquo;s said anyone can access public members. Given that we control the URL requested, can read the response, and can trigger the behaviour at will, all from a crossorigin Flash document, we&rsquo;ve got crossorigin data leakage!</p>
+<p>As you can see, the code makes a request to <code>this.dataPath</code> concatenated with <code>this.exteriorXML1</code>.  When it gets a response, it parses it as XML, and stores the result in <code>this.DATA3</code>. But we control all 3 of those members due to the <code>public</code> access modifiers and <code>Security.allowDomain("*")</code>, and can both read from <em>and</em> write to them from .swfs on our own domain. Given that we control the URL requested, can read the response, and can trigger the behaviour at will, all from a crossorigin Flash document, we&rsquo;ve got crossorigin data leakage!</p>
 
 <p>Well&hellip; with a few caveats:</p>
 
