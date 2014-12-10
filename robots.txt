@@ -1,4 +1,4 @@
 User-agent: *
 Disallow: 
 
-Sitemap: http://JordanMilne.github.io/sitemap.xml 
+Sitemap: http://blog.saynotolinux.com/sitemap.xml 

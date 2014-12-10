@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Crossdomain_theft | Defined Misbehaviour]]></title>
-  <link href="http://JordanMilne.github.io/blog/categories/crossdomain-theft/atom.xml" rel="self"/>
-  <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-04-12T01:02:55-03:00</updated>
-  <id>http://JordanMilne.github.io/</id>
+  <link href="http://blog.saynotolinux.com/blog/categories/crossdomain-theft/atom.xml" rel="self"/>
+  <link href="http://blog.saynotolinux.com/"/>
+  <updated>2014-12-09T20:51:24-04:00</updated>
+  <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
     
@@ -15,12 +15,11 @@
   
   <entry>
     <title type="html"><![CDATA[Yahoo's Pet Show of Horrors: Leaking a User's Emails Crossdomain]]></title>
-    <link href="http://JordanMilne.github.io/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/"/>
+    <link href="http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/"/>
     <updated>2014-03-01T01:12:17-04:00</updated>
-    <id>http://JordanMilne.github.io/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email</id>
+    <id>http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email</id>
     <content type="html"><![CDATA[<p>I&rsquo;m taking a break from browser security posts while I wait for vendors to patch, so the next few posts are probably going to be about web app security. Hopefully I should have some posts about architectural flaws in browsers / plugins by next month.</p>
 
-<a name="Initial.Discovery"></a>
 <h2>Initial Discovery</h2>
 
 <p>Since Yahoo <a href="http://yahoodevelopers.tumblr.com/post/65622522325/the-bug-bounty-program-is-now-live">recently revamped their Responsible Disclosure program</a>, I figured I&rsquo;d have a go at finding some vulnerabilities. All of <code>*.yahoo.com</code> is in scope, and Yahoo has a <em>lot</em> of legacy behind it, so I started going through the more obscure subdomains manually. One of the subdomains I looked at a lot was <code>hk.promotions.yahoo.com</code>. It&rsquo;s a good place to look because it has lots of PHP scripts and Flash, it looks like it wasn&rsquo;t done by Yahoo&rsquo;s core devs, and most auditors aren&rsquo;t looking there since its content is mostly in Chinese.</p>
@@ -42,63 +41,48 @@
 
 <p><a href="/images/posts/petshow/petshow3.png"><img class="center" src="/images/posts/petshow/petshow3.png"></a></p>
 
-<a name="Escalating.Access"></a>
 <h2>Escalating Access</h2>
 
 <p>That&rsquo;s nice and all, but XSS on a mostly-static subdomain isn&rsquo;t that interesting to me. Now, remember that we control the <em>entire</em> body of the proxy&rsquo;s response and that there&rsquo;s no <code>Content-Type</code>. That means we can <em>also</em> proxy an SWF and have it be same-origin with <code>hk.promotions.yahoo.com</code>. Why&rsquo;s a SWF any more useful to us than HTML? Because of overly-permissive <a href="http://kb2.adobe.com/cps/142/tn_14213.html">crossdomain.xml rules</a>.</p>
 
 <p>Flash checks for a <code>&lt;destination domain&gt;/crossdomain.xml</code> file before attempting a crossorigin request, to see if SWFs from the sender&rsquo;s origin may read the response (among other things, see <a href="#Further.Reading">&ldquo;Further Reading&rdquo;</a>.) For example, if you wanted to allow SWFs on any subdomain of <code>yahoo.com</code> to do crossdomain reads to your domain, you might put a rule like this in your <code>crossdomain.xml</code>:</p>
 
-<p><code>xml
-&lt;allow-access-from domain="*.yahoo.com"/&gt;
-</code></p>
+<pre><code class="xml">&lt;allow-access-from domain="*.yahoo.com"/&gt;
+</code></pre>
 
 <p>That&rsquo;s probably overly permissive, <code>*.yahoo.com</code> is a <em>lot</em> of attack surface, but let&rsquo;s take a look at what Yahoo actually has in their <code>crossdomain.xml</code>s.</p>
 
 <p><a href="http://finance.yahoo.com/crossdomain.xml">finance.yahoo.com</a>:</p>
 
-<p>```xml
-&lt;cross-domain-policy></p>
-
-<pre><code>&lt;allow-access-from domain="*.yahoo.com"/&gt;
-&lt;allow-access-from domain="us.js2.yimg.com"/&gt;
-&lt;allow-access-from domain="*.yimg.com"/&gt;
+<pre><code class="xml">&lt;cross-domain-policy&gt;
+    &lt;allow-access-from domain="*.yahoo.com"/&gt;
+    &lt;allow-access-from domain="us.js2.yimg.com"/&gt;
+    &lt;allow-access-from domain="*.yimg.com"/&gt;
+&lt;/cross-domain-policy&gt;
 </code></pre>
-
-<p>&lt;/cross-domain-policy>
-```</p>
 
 <p><a href="http://www.flickr.com/crossdomain.xml">www.flickr.com</a>:</p>
 
-<p>```xml
-&lt;cross-domain-policy></p>
-
-<pre><code>&lt;allow-access-from domain="*.yahoo.com"/&gt;
-&lt;allow-access-from domain="l.yimg.com"/&gt;
-&lt;allow-access-from domain="d.yimg.com"/&gt;
-&lt;allow-access-from domain="s.yimg.com"/&gt;
-&lt;site-control permitted-cross-domain-policies="master-only"/&gt;
+<pre><code class="xml">&lt;cross-domain-policy&gt;
+    &lt;allow-access-from domain="*.yahoo.com"/&gt;
+    &lt;allow-access-from domain="l.yimg.com"/&gt;
+    &lt;allow-access-from domain="d.yimg.com"/&gt;
+    &lt;allow-access-from domain="s.yimg.com"/&gt;
+    &lt;site-control permitted-cross-domain-policies="master-only"/&gt;
+&lt;/cross-domain-policy&gt;
 </code></pre>
-
-<p>&lt;/cross-domain-policy>
-```</p>
 
 <p><a href="http://ca-mg5.mail.yahoo.com/crossdomain.xml">ca-mg5.mail.yahoo.com</a> (webmail server, returns valid <code>crossdomain.xml</code> when logged in):</p>
 
-<p>```xml
-&lt;cross-domain-policy></p>
-
-<pre><code>&lt;allow-access-from domain="*.yahoo.com" secure="false"/&gt;
-&lt;allow-access-from domain="l.yimg.com" secure="false"/&gt;
-&lt;allow-access-from domain="s.yimg.com" secure="false"/&gt;
+<pre><code class="xml">&lt;cross-domain-policy&gt;
+    &lt;allow-access-from domain="*.yahoo.com" secure="false"/&gt;
+    &lt;allow-access-from domain="l.yimg.com" secure="false"/&gt;
+    &lt;allow-access-from domain="s.yimg.com" secure="false"/&gt;
+&lt;/cross-domain-policy&gt;
 </code></pre>
-
-<p>&lt;/cross-domain-policy>
-```</p>
 
 <p>YMail actually has the <em>least</em> secure crossdomain policy of any of the subdomains that I checked. That <code>secure="false"</code> will allow SWFs served over HTTP to read resources only served over HTTPS, making the forced HTTPS a lot less useful. Per Adobe, <a href="http://www.adobe.com/devnet/adobe-media-server/articles/cross-domain-xml-for-streaming.html#articlecontentAdobe_numberedheader_0">&ldquo;Using false in an HTTPS policy file is not recommended because this compromises the security offered by HTTPS.&rdquo;</a></p>
 
-<a name="It.s.Proxies.All.the.Way.Down"></a>
 <h2>It&rsquo;s Proxies All the Way Down</h2>
 
 <p>Well, now we know we can get an arbitrary SWF same-origin with a subdomain of <code>yahoo.com</code>, and we know that SWF can read from a number of subdomains on <code>yahoo.com</code>, let&rsquo;s get some emails!</p>
@@ -121,19 +105,16 @@
 
 <p>Funky. The most obvious application of this attack would be to determine the user&rsquo;s email, initiate a password reset on any &ldquo;interesting&rdquo; sites, read the password reset URL from their email, then delete the email; but there&rsquo;s plenty of others.</p>
 
-<a name="The.Fix"></a>
 <h2>The Fix</h2>
 
 <p>Well, the affected page was for a Hongkongese pet show that happened in 2011, so the fix was removing the page and its associated crossdomain proxy. I&rsquo;m disappointed that the <code>crossdomain.xml</code> rules are still as loose as they are, but I don&rsquo;t think that&rsquo;s getting changed anytime soon. Subsequent reports mentioning the <code>crossdomain.xml</code> rules have been marked WONTFIX.</p>
 
-<a name="TL.DR"></a>
 <h2>TL;DR</h2>
 
 <p>There were SSRF and crossdomain data leakage issues due to a misconfigured crossdomain proxy and overly-permissive <code>crossdomain.xml</code> rules. One was able to leak the emails of the current user, and do anything the user could do from YMail just by having them visit an attacker-controlled page.</p>
 
 <p>This instance of the issue is fixed, but the <code>crossdomain.xml</code> rules are still overly-permissive.</p>
 
-<a name="Disclosure.Timeline"></a>
 <h2>Disclosure Timeline</h2>
 
 <ul>
@@ -146,7 +127,6 @@
 </ul>
 
 
-<a name="Further.Reading"></a>
 <h2>Further Reading</h2>
 
 <ul>
@@ -160,14 +140,13 @@
   
   <entry>
     <title type="html"><![CDATA[What's That Smell? Sniffing Cross-origin Frame Content in Firefox Using Timing Attacks]]></title>
-    <link href="http://JordanMilne.github.io/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/"/>
+    <link href="http://blog.saynotolinux.com/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/"/>
     <updated>2014-02-05T10:12:13-04:00</updated>
-    <id>http://JordanMilne.github.io/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox</id>
+    <id>http://blog.saynotolinux.com/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox</id>
     <content type="html"><![CDATA[<p>Reading the blogs of <a href="http://lcamtuf.blogspot.com">lcamtuf</a> and <a href="http://scarybeastsecurity.blogspot.ca/">Chris Evans</a> is really what got me interested in browser security,
 so I&rsquo;m always on the lookout for novel cross-domain data theft vectors. Today I&rsquo;m going to go into
 the discovery and exploitation of such a bug: A timing attack on Firefox&rsquo;s <code>document.elementFromPoint</code> and <code>document.caretPositionFromPoint</code> implementations.</p>
 
-<a name="Initial.Discovery"></a>
 <h2>Initial Discovery</h2>
 
 <p>I was looking at ways to automatically exploit another bug that required user interaction when I noticed <a href="https://developer.mozilla.org/en-US/docs/Web/API/document.elementFromPoint">elementFromPoint</a> and
@@ -179,31 +158,24 @@ Curious as to how they behaved with frames, I did a little testing.</p>
 
 <p>I made an example page to test:</p>
 
-<p>```html
-<html><body></p>
-
-<pre><code>&lt;iframe id="testFrame" src="http://cbc.ca" width="1025"&gt;&lt;/iframe&gt;
+<pre><code class="html">&lt;html&gt;&lt;body&gt;
+    &lt;iframe id="testFrame" src="http://cbc.ca" width="1025"&gt;&lt;/iframe&gt;
+&lt;/body&gt;&lt;/html&gt;
 </code></pre>
-
-<p></body></html>
-```</p>
 
 <p><code>elementFromPoint(x,y)</code> behaved exactly as I expected, when used in the web console it returned the iframe on my page:</p>
 
-<p>```javascript</p>
-
-<blockquote><p>console.log(document.elementFromPoint(frame.offsetLeft + 10, frame.offsetTop + 10))
+<pre><code class="javascript">&gt; console.log(document.elementFromPoint(frame.offsetLeft + 10, frame.offsetTop + 10))
 &lt; [object HTMLIFrameElement]
-```</p></blockquote>
+</code></pre>
 
 <p><code>caretPositionFromPoint(x,y)</code>, however, was returning elements from the page on cbc.ca!</p>
 
-<p>```javascript</p>
-
-<blockquote><p>console.log(document.caretPositionFromPoint(frame.offsetLeft + 10, frame.offsetTop + 10))
+<pre><code class="javascript">&gt; console.log(document.caretPositionFromPoint(frame.offsetLeft + 10, frame.offsetTop + 10))
 &lt; [object CaretPosition]
-```
-<a href="/images/posts/frompoint/obj_inspector.png"><img class="center" src="/images/posts/frompoint/obj_inspector.png"></a></p></blockquote>
+</code></pre>
+
+<p><a href="/images/posts/frompoint/obj_inspector.png"><img class="center" src="/images/posts/frompoint/obj_inspector.png"></a></p>
 
 <p>But there was a small snag: I couldn&rsquo;t actually access the <code>CaretPosition</code>&rsquo;s <code>offsetNode</code> from JS without getting a security exception.
 It seems that Firefox noticed that <code>offsetNode</code> was being set to an element from a cross-origin document, and wrapped the <code>CaretPosition</code> object
@@ -221,21 +193,16 @@ tells us how large the framed document is, and also allows us to leak which elem
 
 <p>The following function is used to test <code>offsetNode</code> accessibility at a given point in the document:</p>
 
-<p>```javascript
-function isOffsetNodeAccessibleAt(x, y) {</p>
-
-<pre><code>try {
-    document.caretPositionFromPoint(x, y).offsetNode;
-} catch(e) {
-    return false;
+<pre><code class="javascript">function isOffsetNodeAccessibleAt(x, y) {
+    try {
+        document.caretPositionFromPoint(x, y).offsetNode;
+    } catch(e) {
+        return false;
+    }
+    return true;
 }
-return true;
 </code></pre>
 
-<p>}
-```</p>
-
-<a name="Digging.Deeper"></a>
 <h2>Digging Deeper</h2>
 
 <p>Knowing the page&rsquo;s size and whether certain elements are present is nice, but I wanted more. I remembered <a href="http://contextis.co.uk/research/white-papers/pixel-perfect-timing-attacks-html5/">Paul Stone&rsquo;s excellent paper about timing attacks on browser renderers</a> and figured a timing attack might help us here.</p>
@@ -246,29 +213,25 @@ I guessed that the time it took for a <code>caretPositionFromPoint(x,y)</code> c
 
 <p>To test my theory I made a script that runs <code>caretPositionFromPoint(x,y)</code> on a given point 50 times, then stores the median time that the call took to complete. Using the median is important so we can eliminate timing differences due to unrelated factors, like CPU load at the time of the call.</p>
 
-<p>```javascript
-function timeToFindPoint(x, y) {</p>
+<pre><code class="javascript">function timeToFindPoint(x, y) {
+    // window. getter is slow, apparently.
+    var perf = window.performance;
 
-<pre><code>// window. getter is slow, apparently.
-var perf = window.performance;
+    // Run caretPositionFromPoint() NUM_SAMPLES times and store runtime for each call.
+    var runTimes = new Float64Array(NUM_SAMPLES);
+    for(var i=0; i&lt;NUM_SAMPLES; ++i) {
+        var start = perf.now();
+        document.caretPositionFromPoint(x, y);
+        runTimes[i] = perf.now() - start;
+    }
 
-// Run caretPositionFromPoint() NUM_SAMPLES times and store runtime for each call.
-var runTimes = new Float64Array(NUM_SAMPLES);
-for(var i=0; i&lt;NUM_SAMPLES; ++i) {
-    var start = perf.now();
-    document.caretPositionFromPoint(x, y);
-    runTimes[i] = perf.now() - start;
+    // Return the median runtime for the call
+    runTimes = Array.apply( [], runTimes);
+    runTimes.sort();
+
+    return runTimes[(NUM_SAMPLES / 2) | 0];
 }
-
-// Return the median runtime for the call
-runTimes = Array.apply( [], runTimes);
-runTimes.sort();
-
-return runTimes[(NUM_SAMPLES / 2) | 0];
 </code></pre>
-
-<p>}
-```</p>
 
 <p>Once we&rsquo;ve gathered timing measurements for all of the points across the iframe, we can make a visualization of the differences:</p>
 
@@ -281,7 +244,6 @@ return runTimes[(NUM_SAMPLES / 2) | 0];
 <p>It also seems that even though <code>elementFromPoint</code> doesn&rsquo;t return elements from the framed document, it still descends into it for its hit testing, so it&rsquo;s vulnerable to
 the same timing attack as <code>caretPositionFromPoint</code>.</p>
 
-<a name="Stealing.Text"></a>
 <h2>Stealing Text</h2>
 
 <p>So we can infer quite a bit about the framed document from the timing information, but can we actually steal text from it? Maybe, with a lot of work, depending on the page&rsquo;s styling.</p>
@@ -294,7 +256,6 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
 
 <p>Note that since we need to force text wrapping to get these measurements, it&rsquo;s harder to steal text from fixed-width pages, or pages that display a horizontal scrollbar instead of wrapping text (like <code>view-source:</code> URIs.) Pages that use fixed-width fonts are also more difficult to analyze because characters do not have distinct widths, we can only determine the number of characters in a word.</p>
 
-<a name="Working.Examples"></a>
 <h2>Working Examples</h2>
 
 <p>Note that the last Firefox version these actually work in is <code>26</code>, if you want to try them out you&rsquo;ll have to find a download for it.</p>
@@ -305,12 +266,10 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
 </ul>
 
 
-<a name="The.Fix"></a>
 <h2>The Fix</h2>
 
-<p>Judging from <a href="https://hg.mozilla.org/mozilla-central/rev/cdbe5779c728">Robert O'Callahan&rsquo;s fix</a>, it looks like Firefox was using a general hit testing function that descended cross-document for both <code>elementFromPoint</code> and <code>caretPositionFromPoint</code>. The fix was to disable cross-document descent in the hit testing function when called by either <code>elementFromPoint</code> or <code>caretPositionFromPoint</code>.</p>
+<p>Judging from <a href="https://hg.mozilla.org/mozilla-central/rev/cdbe5779c728">Robert O&#8217;Callahan&rsquo;s fix</a>, it looks like Firefox was using a general hit testing function that descended cross-document for both <code>elementFromPoint</code> and <code>caretPositionFromPoint</code>. The fix was to disable cross-document descent in the hit testing function when called by either <code>elementFromPoint</code> or <code>caretPositionFromPoint</code>.</p>
 
-<a name="Disclosure.Timeline"></a>
 <h2>Disclosure Timeline</h2>
 
 <ul>

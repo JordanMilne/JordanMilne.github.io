@@ -1,0 +1,393 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Yahoo&#8217;s Pet Show of Horrors: Leaking a User&#8217;s Emails Crossdomain - Defined Misbehaviour</title>
+  <meta name="author" content="Jordan Milne">
+
+  
+  <meta name="description" content="I&rsquo;m taking a break from browser security posts while I wait for vendors to patch, so the next few posts are probably going to be about web app &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
+  <link href="/atom.xml" rel="alternate" title="Defined Misbehaviour" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Defined Misbehaviour</a></h1>
+  
+    <h2>Web security, programming, reverse-engineering, and everything related.</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:blog.saynotolinux.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/about-me">About Me</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Yahoo&#8217;s Pet Show of Horrors: Leaking a User&#8217;s Emails Crossdomain</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-03-01T01:12:17-04:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-03-01T01:12:17-04:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>1:12 am</span></time></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I&rsquo;m taking a break from browser security posts while I wait for vendors to patch, so the next few posts are probably going to be about web app security. Hopefully I should have some posts about architectural flaws in browsers / plugins by next month.</p>
+
+<h2>Initial Discovery</h2>
+
+<p>Since Yahoo <a href="http://yahoodevelopers.tumblr.com/post/65622522325/the-bug-bounty-program-is-now-live">recently revamped their Responsible Disclosure program</a>, I figured I&rsquo;d have a go at finding some vulnerabilities. All of <code>*.yahoo.com</code> is in scope, and Yahoo has a <em>lot</em> of legacy behind it, so I started going through the more obscure subdomains manually. One of the subdomains I looked at a lot was <code>hk.promotions.yahoo.com</code>. It&rsquo;s a good place to look because it has lots of PHP scripts and Flash, it looks like it wasn&rsquo;t done by Yahoo&rsquo;s core devs, and most auditors aren&rsquo;t looking there since its content is mostly in Chinese.</p>
+
+<!--more-->
+
+
+<p>I ended up on <code>http://hk.promotions.yahoo.com/petshow2011/</code>, apparently a page for a Hongkongese pet show that happened in 2011:</p>
+
+<p><a href="/images/posts/petshow/petshow0.png"><img class="center" src="/images/posts/petshow/petshow0.png" width="640" height="480"></a></p>
+
+<p>As you can see from the request log, something on the page was requesting data from another domain through a crossdomain proxy: <code>http://hk.promotions.yahoo.com/petshow2011/php/getImages.php?file=&lt;url&gt;</code>.</p>
+
+<p>Crossdomain proxies are generally goldmines for vulnerabilities, and this one&rsquo;s no different. First of all, it doesn&rsquo;t whitelist the URLs that we may make requests to, and the proxy is positioned inside Yahoo&rsquo;s internal network, so we can have it proxy out resources that would normally be inacessible. I tested with a <code>.corp.yahoo.com</code> URL I found on google, and ended up with some uninteresting, but normally inaccessible search statistics. Other SSRF attacks were likely posible, but I didn&rsquo;t poke it too much other than to verify that local file disclosure wasn&rsquo;t possible.</p>
+
+<p>Second, since the proxy doesn&rsquo;t set a <code>Content-Type</code> on the response and we control the response body, we&rsquo;ve got XSS on <code>hk.promotions.yahoo.com</code> thanks to type sniffing!</p>
+
+<p><a href="/images/posts/petshow/petshow2.png"><img class="center" src="/images/posts/petshow/petshow2.png" width="640" height="480"></a></p>
+
+<p><a href="/images/posts/petshow/petshow3.png"><img class="center" src="/images/posts/petshow/petshow3.png"></a></p>
+
+<h2>Escalating Access</h2>
+
+<p>That&rsquo;s nice and all, but XSS on a mostly-static subdomain isn&rsquo;t that interesting to me. Now, remember that we control the <em>entire</em> body of the proxy&rsquo;s response and that there&rsquo;s no <code>Content-Type</code>. That means we can <em>also</em> proxy an SWF and have it be same-origin with <code>hk.promotions.yahoo.com</code>. Why&rsquo;s a SWF any more useful to us than HTML? Because of overly-permissive <a href="http://kb2.adobe.com/cps/142/tn_14213.html">crossdomain.xml rules</a>.</p>
+
+<p>Flash checks for a <code>&lt;destination domain&gt;/crossdomain.xml</code> file before attempting a crossorigin request, to see if SWFs from the sender&rsquo;s origin may read the response (among other things, see <a href="#Further.Reading">&ldquo;Further Reading&rdquo;</a>.) For example, if you wanted to allow SWFs on any subdomain of <code>yahoo.com</code> to do crossdomain reads to your domain, you might put a rule like this in your <code>crossdomain.xml</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span><span class="nt">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That&rsquo;s probably overly permissive, <code>*.yahoo.com</code> is a <em>lot</em> of attack surface, but let&rsquo;s take a look at what Yahoo actually has in their <code>crossdomain.xml</code>s.</p>
+
+<p><a href="http://finance.yahoo.com/crossdomain.xml">finance.yahoo.com</a>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;cross-domain-policy&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;us.js2.yimg.com&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yimg.com&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/cross-domain-policy&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><a href="http://www.flickr.com/crossdomain.xml">www.flickr.com</a>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;cross-domain-policy&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;l.yimg.com&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;d.yimg.com&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;s.yimg.com&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;site-control</span> <span class="na">permitted-cross-domain-policies=</span><span class="s">&quot;master-only&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/cross-domain-policy&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><a href="http://ca-mg5.mail.yahoo.com/crossdomain.xml">ca-mg5.mail.yahoo.com</a> (webmail server, returns valid <code>crossdomain.xml</code> when logged in):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;cross-domain-policy&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;l.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;s.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/cross-domain-policy&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>YMail actually has the <em>least</em> secure crossdomain policy of any of the subdomains that I checked. That <code>secure="false"</code> will allow SWFs served over HTTP to read resources only served over HTTPS, making the forced HTTPS a lot less useful. Per Adobe, <a href="http://www.adobe.com/devnet/adobe-media-server/articles/cross-domain-xml-for-streaming.html#articlecontentAdobe_numberedheader_0">&ldquo;Using false in an HTTPS policy file is not recommended because this compromises the security offered by HTTPS.&rdquo;</a></p>
+
+<h2>It&rsquo;s Proxies All the Way Down</h2>
+
+<p>Well, now we know we can get an arbitrary SWF same-origin with a subdomain of <code>yahoo.com</code>, and we know that SWF can read from a number of subdomains on <code>yahoo.com</code>, let&rsquo;s get some emails!</p>
+
+<p>First, we need to pick the SWF to proxy. The obvious choice for someone who doesn&rsquo;t know Flash well is a <a href="https://github.com/borisreitman/CrossXHR">SWF&lt;->JS XHR proxy</a>. These allow you to proxy requests from JS through a specialized SWF. Here was the result, with some overzealous redaction:</p>
+
+<p><a href="/images/posts/petshow/petshow4.png"><img class="center" src="/images/posts/petshow/petshow4.png" width="640"></a></p>
+
+<p>Looks like our proxied proxy works, the response body includes all of my test account&rsquo;s auth tokens and personal info. One of those tokens allows us to access a JSON endpoint that lists our e-mails:</p>
+
+<p><a href="/images/posts/petshow/petshow6.png"><img class="center" src="/images/posts/petshow/petshow6.png" width="640"></a></p>
+
+<p>and we can use those message IDs to pull up specific emails from the user&rsquo;s inbox:</p>
+
+<p><a href="/images/posts/petshow/petshow7.png"><img class="center" src="/images/posts/petshow/petshow7.png" width="640"></a></p>
+
+<p>and since we can read pages containing CSRF tokens, we can delete the user&rsquo;s emails, send emails as the current user, etc:</p>
+
+<p><a href="/images/posts/petshow/petshow8.png"><img class="center" src="/images/posts/petshow/petshow8.png" width="640"></a></p>
+
+<p>Funky. The most obvious application of this attack would be to determine the user&rsquo;s email, initiate a password reset on any &ldquo;interesting&rdquo; sites, read the password reset URL from their email, then delete the email; but there&rsquo;s plenty of others.</p>
+
+<h2>The Fix</h2>
+
+<p>Well, the affected page was for a Hongkongese pet show that happened in 2011, so the fix was removing the page and its associated crossdomain proxy. I&rsquo;m disappointed that the <code>crossdomain.xml</code> rules are still as loose as they are, but I don&rsquo;t think that&rsquo;s getting changed anytime soon. Subsequent reports mentioning the <code>crossdomain.xml</code> rules have been marked WONTFIX.</p>
+
+<h2>TL;DR</h2>
+
+<p>There were SSRF and crossdomain data leakage issues due to a misconfigured crossdomain proxy and overly-permissive <code>crossdomain.xml</code> rules. One was able to leak the emails of the current user, and do anything the user could do from YMail just by having them visit an attacker-controlled page.</p>
+
+<p>This instance of the issue is fixed, but the <code>crossdomain.xml</code> rules are still overly-permissive.</p>
+
+<h2>Disclosure Timeline</h2>
+
+<ul>
+<li>Nov. 19 2013: Discovered that crossdomain proxy leaked internal resources</li>
+<li>Nov. 20 2013: Reported issue to Yahoo</li>
+<li>Nov. 23 2013: Updated Yahoo on the XSS / crossdomain leakage / crossdomain.xml issues</li>
+<li>Nov. 25 2013: Yahoo acknowledges report</li>
+<li>Nov. 29 2013: Yahoo fixes issue</li>
+<li>Feb. 03 2014: Yahoo confirms report, bounty elligibility</li>
+</ul>
+
+
+<h2>Further Reading</h2>
+
+<ul>
+<li><a href="https://gist.github.com/anonymous/5c2b1440b37d7d715592">An example of a vulnerable crossdomain proxy</a></li>
+<li><a href="https://docs.google.com/document/d/1v1TkWZtrhzRLy0bYXBcdLUedXGb9njTNIJXa3u9akHM/edit?pli=1#">SSRF Bible</a></li>
+<li><a href="http://code.google.com/p/browsersec/wiki/Part2#Same-origin_policy_for_Flash">Flash same-origin policy primer</a></li>
+</ul>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Jordan Milne</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-03-01T01:12:17-04:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-03-01T01:12:17-04:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>1:12 am</span></time></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/crossdomain-theft/'>crossdomain_theft</a>, <a class='category' href='/blog/categories/flash/'>flash</a>, <a class='category' href='/blog/categories/yahoo/'>yahoo</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/" data-via="" data-counturl="http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/" title="Previous Post: What's that smell? Sniffing cross-origin frame content in Firefox using timing attacks">&laquo; What&#8217;s that smell? Sniffing cross-origin frame content in Firefox using timing attacks</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/" title="Next Post: Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite">Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>About Me</h1>
+  <h3>Jordan Milne</h3>
+  <p>I&#8217;m a programmer with a passion for web / browser security. Most of my spare time goes towards putting something together or trying to make it come apart.</p>
+  <p>I dream about timing attacks, info leaks, and same-origin policy violations.</p>
+  <br/>
+  &bull;<a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#58;&#100;&#x65;&#x66;&#x69;&#110;&#101;&#x64;&#109;&#x69;&#x73;&#x62;&#x65;&#x68;&#97;&#x76;&#105;&#x6f;&#x75;&#x72;&#x40;&#115;&#97;&#121;&#110;&#111;&#x74;&#111;&#108;&#105;&#110;&#117;&#120;&#x2e;&#x63;&#x6f;&#x6d;">Email</a><br/>
+  &bull;<a href="http://www.linkedin.com/in/jordanamilne">LinkedIn</a><br/>
+  </ol>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/12/09/leaking-yahoo-mail-cross-origin-again/">Leaking Yahoo! Mail CrossOrigin&#8230; Again</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/">Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">Yahoo&#8217;s Pet Show of Horrors: Leaking a User&#8217;s Emails Crossdomain</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/">What&#8217;s That Smell? Sniffing Cross-origin Frame Content in Firefox Using Timing Attacks</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/">Abusing NoScript&#8217;s Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  <i>Any opinions expressed on this site are my own, and may not represent the opinions of those who, incidentally, pay me money.</i>
+</p>
+<p>
+  Copyright &copy; 2014 - Jordan Milne -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

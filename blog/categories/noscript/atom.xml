@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Noscript | Defined Misbehaviour]]></title>
-  <link href="http://JordanMilne.github.io/blog/categories/noscript/atom.xml" rel="self"/>
-  <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-04-12T01:02:55-03:00</updated>
-  <id>http://JordanMilne.github.io/</id>
+  <link href="http://blog.saynotolinux.com/blog/categories/noscript/atom.xml" rel="self"/>
+  <link href="http://blog.saynotolinux.com/"/>
+  <updated>2014-12-09T20:51:24-04:00</updated>
+  <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
     
@@ -15,12 +15,11 @@
   
   <entry>
     <title type="html"><![CDATA[Abusing NoScript's Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)]]></title>
-    <link href="http://JordanMilne.github.io/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/"/>
+    <link href="http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/"/>
     <updated>2013-12-18T03:58:17-04:00</updated>
-    <id>http://JordanMilne.github.io/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way</id>
+    <id>http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way</id>
     <content type="html"><![CDATA[<p>Here&rsquo;s one that&rsquo;s been <a href="http://www.w2spconf.com/2011/papers/jspriv.pdf">covered a bit before</a>: <a href="http://noscript.net/">NoScript</a> makes it easy for whitelisted sites to see what other sites are on the whitelist.</p>
 
-<a name="So.what.s.the.issue."></a>
 <h2>So what&rsquo;s the issue?</h2>
 
 <p>Most of the pertinent info is in the previous paper, but I&rsquo;ll give a brief summary. By default NoScript operates in whitelist mode, forbidding scripts from all domains. Once a site has been added to the whitelist, scripts from that domain <em>as well as those included from other whitelisted domains</em> may be executed on the page.</p>
@@ -42,16 +41,15 @@ visited that site.</p>
 <p>The same method may be used to determine if NoScript has blocked a resource that would normally return a 200 HTTP status code. <code><a href="http://domain.tld/">http://domain.tld/</a></code> usually returns HTML with a 200 status code, so that&rsquo;s a pretty good candidate for testing.</p>
 
 <p>For example:
-```html onload/onerror example</p>
+&#8220;`html onload/onerror example</p>
 
 <script src="http://google.com" onload="javascript:alert('google loaded')" onerror="javascript:alert('google failed')"></script>
 
 
-<p>```</p>
+<p>&#8220;`</p>
 
 <p>If you have google.com whitelisted, this will say &ldquo;google loaded!&rdquo;. Otherwise (or if google.com is down for some reason) this will print &ldquo;google failed&rdquo;.</p>
 
-<a name="Cool..let.s.see.it.in.action."></a>
 <h2>Cool, let&rsquo;s see it in action!</h2>
 
 <p><a href="http://saynotolinux.com/tests/noscript/whitelist_disclosure.html">Here&rsquo;s an example</a> of how the attack may be used, including a timing attack based on the <a href="http://blog.saynotolinux.com/2013/11/bypassing-requestpolicys-whitelist.html">RequestPolicy bypass described in my last post</a>. Mind, the timing attack is a bit spotty, and generally doesn&rsquo;t work on
@@ -61,7 +59,6 @@ the first page load. Refresh the page if it doesn&rsquo;t work the first time.</
 
 <p><a href="/images/posts/whitelist-disclosure.png"><img src="/images/posts/whitelist-disclosure.png"></a></p>
 
-<a name="How.can.it.be.fixed."></a>
 <h2>How can it be fixed?</h2>
 
 <p>Global whitelist entries by their very nature leak info to any other site on the whitelist. This won&rsquo;t be fixed in NoScript until support for per-site whitelists is added and people are encouraged to remove their old global rules.</p>

@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Reddit | Defined Misbehaviour]]></title>
-  <link href="http://JordanMilne.github.io/blog/categories/reddit/atom.xml" rel="self"/>
-  <link href="http://JordanMilne.github.io/"/>
-  <updated>2014-04-12T01:02:55-03:00</updated>
-  <id>http://JordanMilne.github.io/</id>
+  <link href="http://blog.saynotolinux.com/blog/categories/reddit/atom.xml" rel="self"/>
+  <link href="http://blog.saynotolinux.com/"/>
+  <updated>2014-12-09T20:51:24-04:00</updated>
+  <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
     
@@ -15,15 +15,13 @@
   
   <entry>
     <title type="html"><![CDATA[Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite]]></title>
-    <link href="http://JordanMilne.github.io/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/"/>
+    <link href="http://blog.saynotolinux.com/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/"/>
     <updated>2014-04-12T00:04:22-03:00</updated>
-    <id>http://JordanMilne.github.io/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw</id>
-    <content type="html"><![CDATA[<a name="TL.DR"></a>
-<h2>TL;DR</h2>
+    <id>http://blog.saynotolinux.com/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw</id>
+    <content type="html"><![CDATA[<h2>TL;DR</h2>
 
 <p>The library that <a href="http://redditenhancementsuite.com/">Reddit Enhancement Suite</a> (a browser extension for reddit users) used for HTML sanitization had a bug that bit them pretty hard, enabling DOM-based XSS of 1.5~ million reddit users. RES pushed out a fixed version, and reddit deployed a script to prevent users of the old version from accidentally getting exploited; thus preventing an XSS worm.</p>
 
-<a name="Introduction"></a>
 <h2>Introduction</h2>
 
 <p>If you&rsquo;re a user of Reddit Enhancement Suite, chances are you recently saw this big scary alert() box when you tried to click an expando button:</p>
@@ -39,135 +37,118 @@
 <!--more-->
 
 
-<a name="Unusual.Beginnings"></a>
 <h2>Unusual Beginnings</h2>
 
 <p>Interestingly, the most important part of the RES exploit wasn&rsquo;t found by looking at RES at all. I actually found it by poking around reddit&rsquo;s markdown library, <a href="https://github.com/reddit/snudown">Snudown</a>. Snudown is mostly written in C, and is a fork of the <a href="https://github.com/vmg/sundown">Sundown</a> markdown library. Snudown departs from Sundown in a number of ways, the most important to us being that it adds the ability to include a <a href="https://github.com/reddit/snudown/blob/master/snudown.c#L36">restricted subset of HTML</a> alongside your markdown. On reddit, markdown with inline HTML may only be used on the wiki, as it&rsquo;s intended to allow using HTML tables instead of Sundown&rsquo;s <a href="http://michelf.ca/projects/php-markdown/extra/#table">unwieldly markdown tables</a>.</p>
 
-<a name="Taking.Apart.the.Sanitizer"></a>
 <h2>Taking Apart the Sanitizer</h2>
 
 <p>So let&rsquo;s go into a simplified view of <a href="https://github.com/reddit/snudown/blob/30fee253240199f46f4f30aa3284dd1e92136ef2/html/html.c#L391">how Snudown did attribute whitelisting</a>. Snudown scanned everything after the tag name, and before a <code>&gt;</code> for valid <code>attr=value</code> pairs, reading everything into the <code>attr</code> buffer as it went. Once Snudown realized it was not dealing with a valid valid/value pair, it would clear the attr buffer and start looking for the next valid pair. Once it decided it had hit the end of the value (by encountering a space outside the quotes, or a <code>&gt;</code> anywhere), it would output everything in the <code>attr</code> buffer, clear it, then continue parsing attributes. Some interesting consequences of the process, <code>&lt;table scope==   scope=bar&gt;</code> was sanitized to <code>&lt;table scope=bar&gt;</code>,  and <code>&lt;table bad=scope="bar"&gt;</code> was sanitized to <code>&lt;table scope="bar"&gt;</code>.</p>
 
 <p>Those outputs aren&rsquo;t consistent with most HTML parsers, but the biggest issue was how it handled quotes: Snudown saw <code>&lt;table scope=a' bar=baz'&gt;</code> as a <code>table</code> with a single <code>scope</code> attribute, but every mainstream browser sees this as a <code>table</code> with both <code>scope</code> and <code>bar</code> attributes. Quotes are only treated as attribute delimiters when they occur at the <em>beginning</em> of the value, otherwise whitespace is the delimiter. Since Snudown was outputting every validated attr/value pair verbatim, we could abuse this behaviour to sneak attributes like <code>onmouseover</code> by the whitelist!</p>
 
-<a name="So.wait..this.was.an.XSS.on.reddit.s.wikis."></a>
 <h2>So wait, this was an XSS on reddit&rsquo;s wikis?</h2>
 
 <p>No. See, even though Snudown performs its own sanitization on inline HTML, Snudown&rsquo;s output generally isn&rsquo;t trusted within reddit&rsquo;s codebase. All of the HTML that comes out of Snudown gets put through a <a href="https://github.com/reddit/reddit/blob/5cbea9cdf401f1602394c16b2a8384205962032d/r2/r2/lib/filters.py#L201">SAX / BeautifulSoup-based sanitizer</a> that validates the HTML and reserializes it in a way that&rsquo;s unambiguous across browsers. For example, the ambiguous:</p>
 
-<p>```html</p>
-
-<p><table scope=`bar cellspacing='` baz=heyIE ignore=a'>
-```</p>
+<p><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>&lt;table scope=`bar cellspacing='` baz=heyIE ignore=a'></span></code></pre></td></tr></table></div></figure></p>
 
 <p>passes both validation steps, but becomes the unambiguous:</p>
 
-<p><code>html
-&lt;table scope="`bar" cellspacing="` baz=heyIE ignore=a'"&gt;
-</code></p>
+<p><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;table scope="`bar" cellspacing="` baz=heyIE ignore=a'"></span></code></pre></td></tr></table></div></figure></p>
 
 <p>when reserialized by reddit&rsquo;s SAX sanitizer.</p>
 
 <p>To reiterate, though reddit used Snudown&rsquo;s wiki rendering mode, <em>reddit was never vulnerable to XSS</em> due to additional precautions taken with its output.</p>
 
-<a name="But.what.does.any.of.this.have.to.do.with.RES..image.expandos."></a>
-<h2>But what does any of this have to do with RES' image expandos?</h2>
+<h2>But what does any of this have to do with RES&#8217; image expandos?</h2>
 
 <p>I knew that reddit itself wasn&rsquo;t vulnerable, so before I did anything, I wanted to check if anyone else was using Snudown&rsquo;s wiki rendering mode in production, outside of users of the reddit codebase. One thing that kept popping up was <a href="https://github.com/gamefreak/snuownd">SnuOwnd</a>, a faithful port of Snudown (with all its quirks) to JS. As some of you may have noticed from the RES changelogs, the Reddit Enhancement Suite also includes SnuOwnd. RES actually uses SnuOwnd for a number of things, and that used to include <a href="https://github.com/honestbleeps/Reddit-Enhancement-Suite/blob/e13760edbdb7837b47638c38010cf0e8ba40fb2d/lib/utils.js#L501">HTML sanitization</a>:</p>
 
-<p>```javascript
-RESUtils.sanitizeHTML = function(htmlStr) {</p>
+<pre><code class="javascript">RESUtils.sanitizeHTML = function(htmlStr) {
+    if (!this.sanitizer) {
+        var SnuOwnd = window.SnuOwnd;
+        var redditCallbacks = SnuOwnd.getRedditCallbacks();
+        var callbacks = SnuOwnd.createCustomCallbacks({
+            paragraph: function(out, text, options) {
+                if (text) out.s += text.s;
+            },
+            autolink: redditCallbacks.autolink,
+            raw_html_tag: redditCallbacks.raw_html_tag
+        });
+        var rendererConfig = SnuOwnd.defaultRenderState();
+        rendererConfig.flags = SnuOwnd.DEFAULT_WIKI_FLAGS;
+        rendererConfig.html_element_whitelist = [
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'div', 'code',
+            'br', 'hr', 'p', 'a', 'img', 'pre', 'blockquote', 'table',
+            'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'strong', 'em',
+            'i', 'b', 'u', 'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+            'font', 'center', 'small', 's', 'q', 'sub', 'sup', 'del'
+        ];
+        rendererConfig.html_attr_whitelist = [
+            'href', 'title', 'src', 'alt', 'colspan',
+            'rowspan', 'cellspacing', 'cellpadding', 'scope',
+            'face', 'color', 'size', 'bgcolor', 'align'
+        ];
+        this.sanitizer = SnuOwnd.getParser({
+            callbacks: callbacks,
+            context: rendererConfig
+        });
+    }
+    return this.sanitizer.render(htmlStr);
+};
 
-<pre><code>if (!this.sanitizer) {
-    var SnuOwnd = window.SnuOwnd;
-    var redditCallbacks = SnuOwnd.getRedditCallbacks();
-    var callbacks = SnuOwnd.createCustomCallbacks({
-        paragraph: function(out, text, options) {
-            if (text) out.s += text.s;
-        },
-        autolink: redditCallbacks.autolink,
-        raw_html_tag: redditCallbacks.raw_html_tag
-    });
-    var rendererConfig = SnuOwnd.defaultRenderState();
-    rendererConfig.flags = SnuOwnd.DEFAULT_WIKI_FLAGS;
-    rendererConfig.html_element_whitelist = [
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'div', 'code',
-        'br', 'hr', 'p', 'a', 'img', 'pre', 'blockquote', 'table',
-        'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'strong', 'em',
-        'i', 'b', 'u', 'ul', 'ol', 'li', 'dl', 'dt', 'dd',
-        'font', 'center', 'small', 's', 'q', 'sub', 'sup', 'del'
-    ];
-    rendererConfig.html_attr_whitelist = [
-        'href', 'title', 'src', 'alt', 'colspan',
-        'rowspan', 'cellspacing', 'cellpadding', 'scope',
-        'face', 'color', 'size', 'bgcolor', 'align'
-    ];
-    this.sanitizer = SnuOwnd.getParser({
-        callbacks: callbacks,
-        context: rendererConfig
-    });
+//...snip
+
+$.fn.safeHtml = function(string) {
+    if (!string) return '';
+    else return $(this).html(RESUtils.sanitizeHTML(string));
 }
-return this.sanitizer.render(htmlStr);
 </code></pre>
-
-<p>};</p>
-
-<p>//&hellip;snip</p>
-
-<p>$.fn.safeHtml = function(string) {</p>
-
-<pre><code>if (!string) return '';
-else return $(this).html(RESUtils.sanitizeHTML(string));
-</code></pre>
-
-<p>}
-```</p>
 
 <p>Eep.</p>
 
 <p>Even if we can&rsquo;t get an XSS on reddit.com proper, RES is still a pretty juicy target. With <a href="https://chrome.google.com/webstore/detail/reddit-enhancement-suite/kbmfpngjjgdllneeigpgjifpgocmfgmb">an install base of 1.5~ million users</a> — which includes a good chunk of reddit&rsquo;s moderators — an XSS in RES could do a lot of damage.</p>
 
-<a name="Finding.the.Attack.Vector"></a>
 <h2>Finding the Attack Vector</h2>
 
-<p>Now all that&rsquo;s left is to find where safeHTML or sanitizeHTML are passed untrusted data, and we&rsquo;ve got ourselves an XSS via extension. If it wasn&rsquo;t apparent from the alert dialog, that injection point is in RES' expandos:</p>
+<p>Now all that&rsquo;s left is to find where safeHTML or sanitizeHTML are passed untrusted data, and we&rsquo;ve got ourselves an XSS via extension. If it wasn&rsquo;t apparent from the alert dialog, that injection point is in RES&#8217; expandos:</p>
 
-<p>```javascript</p>
+<pre><code class="javascript">    generateTextExpando: function(expandoButton) {
+        var imageLink = expandoButton.imageLink;
+        var wrapperDiv = document.createElement('div');
+        wrapperDiv.className = 'usertext';
 
-<pre><code>generateTextExpando: function(expandoButton) {
-    var imageLink = expandoButton.imageLink;
-    var wrapperDiv = document.createElement('div');
-    wrapperDiv.className = 'usertext';
+        var imgDiv = document.createElement('div');
+        imgDiv.className = 'madeVisible usertext-body';
 
-    var imgDiv = document.createElement('div');
-    imgDiv.className = 'madeVisible usertext-body';
+        var header = document.createElement('h3');
+        header.className = 'imgTitle';
+        $(header).safeHtml(imageLink.imageTitle);
+        imgDiv.appendChild(header);
 
-    var header = document.createElement('h3');
-    header.className = 'imgTitle';
-    $(header).safeHtml(imageLink.imageTitle);
-    imgDiv.appendChild(header);
-
-    //...snip
-    expandoButton.expandoBox = imgDiv;
-    //...snip
-}
+        //...snip
+        expandoButton.expandoBox = imgDiv;
+        //...snip
+    }
 </code></pre>
 
-<p>```</p>
-
-<p><code>imageLink.imageTitle</code> is <a href="https://github.com/honestbleeps/Reddit-Enhancement-Suite/blob/493e3f23b80f0a013d60b70ee9470996cc2d7d9c/lib/modules/showImages.js#L2415">completely controlled by the attacker</a>, and provided we can get one of RES' supported sites to serve our Snudown-evading payload, RES will inject it into the DOM.</p>
+<p><code>imageLink.imageTitle</code> is <a href="https://github.com/honestbleeps/Reddit-Enhancement-Suite/blob/493e3f23b80f0a013d60b70ee9470996cc2d7d9c/lib/modules/showImages.js#L2415">completely controlled by the attacker</a>, and provided we can get one of RES&#8217; supported sites to serve our Snudown-evading payload, RES will inject it into the DOM.</p>
 
 <p>RES supports expanding text posts from Tumblr inline, and Tumblr allows us to use valid HTML in post titles, so if we <a href="http://tumblbustinator.tumblr.com/post/81275599702/foobar">made a post</a> with the title <code>Foobar &lt;img src=foo' onerror="alert(1)" ' /&gt;</code>, <code>alert(1)</code> would be called when they expanded our link:</p>
 
 <p><a href="/images/posts/res-xss/xssd.png"><img class="center" src="/images/posts/res-xss/xssd.png"></a></p>
 
-<a name="Worst-case.Scenario"></a>
 <h2>Worst-case Scenario</h2>
 
 <p>This was about as bad as it gets without having a zero-interaction XSS. Comment pages have a &ldquo;Show Images&rdquo; button that expands all images on the page, and those get used a <em>lot</em> for picture threads. Had someone posted a child comment to one of the top comments with a link to the payload, they could have easily started an XSS worm that spammed links to the payload in other threads. Once it spread, the worm could have done things like upvote specific submissions, nuke a subreddit if a moderator got exploited, etc.</p>
 
-<a name="The.Fix"></a>
 <h2>The Fix</h2>
 
 <p>This bug required fixes in a number of places to keep it fully closed. First, <a href="https://github.com/reddit/snudown/commit/62bfa4ad673c4f19683ed91c5ebb093bbe9f581d">Snudown&rsquo;s HTML sanitization was changed</a> to first parse the attributes, then unambiguously reserialize its interpretation. That fix was then <a href="https://github.com/honestbleeps/Reddit-Enhancement-Suite/commit/de3f84cac524c473e08d72517dc1d75f26906507">ported to SnuOwnd&rsquo;s JS implementation</a>.</p>
@@ -176,47 +157,36 @@ else return $(this).html(RESUtils.sanitizeHTML(string));
 
 <p>Third, since the issue was so trivial to exploit, and had such high impact, it was necessary to block users still on vulnerable versions of RES from opening expandos to prevent an XSS worm from spreading. reddit ended up doing this on their end by detecting attempts to open the expandos and blocking it based on a version number RES places in the DOM:</p>
 
-<p>```javascript
-r.resAdvisory = {};
+<pre><code class="javascript">r.resAdvisory = {};
 r.resAdvisory.minResVersion = [4, 3, 2, 1];
-r.resAdvisory.checkRESClick = function (e) {</p>
-
-<pre><code>if (e.target.id == "viewImagesButton" || $(e.target).hasClass("expando-button")) {
-    if(r.resAdvisory.checkRESVersion()) {
-        document.body.removeEventListener("click", r.resAdvisory.checkRESClick, true)
-    } else {
-        e.preventDefault();
-        e.stopPropagation();
-        alert("The version of Reddit Enhancement Suite you are using has a bug which makes expanding posts insecure to use. Please update Reddit Enhancement Suite to continue using post expandos.  Please visit /r/Enhancement for more information."));
-    } 
+r.resAdvisory.checkRESClick = function (e) {
+    if (e.target.id == "viewImagesButton" || $(e.target).hasClass("expando-button")) {
+        if(r.resAdvisory.checkRESVersion()) {
+            document.body.removeEventListener("click", r.resAdvisory.checkRESClick, true)
+        } else {
+            e.preventDefault();
+            e.stopPropagation();
+            alert("The version of Reddit Enhancement Suite you are using has a bug which makes expanding posts insecure to use. Please update Reddit Enhancement Suite to continue using post expandos.  Please visit /r/Enhancement for more information."));
+        } 
+    }
+};
+r.resAdvisory.checkRESVersion = _.memoize(function () {
+    if (!$("#RESMainGearOverlay").length) return true;
+    var version = $("#RESConsoleVersion").text();
+    if (!version)
+        return false;
+    version = version.substring(1).split(".");
+    version = _.map(ver, function (num) {
+        return parseInt(num);
+    });
+    return version &gt;= r.resAdvisory.minResVersion;
+});
+r.resAdvisory.init = function () {
+    if(document.body.addEventListener)
+        document.body.addEventListener("click", r.resAdvisory.checkRESClick, true);
 }
 </code></pre>
 
-<p>};
-r.resAdvisory.checkRESVersion = _.memoize(function () {</p>
-
-<pre><code>if (!$("#RESMainGearOverlay").length) return true;
-var version = $("#RESConsoleVersion").text();
-if (!version)
-    return false;
-version = version.substring(1).split(".");
-version = _.map(ver, function (num) {
-    return parseInt(num);
-});
-return version &gt;= r.resAdvisory.minResVersion;
-</code></pre>
-
-<p>});
-r.resAdvisory.init = function () {</p>
-
-<pre><code>if(document.body.addEventListener)
-    document.body.addEventListener("click", r.resAdvisory.checkRESClick, true);
-</code></pre>
-
-<p>}
-```</p>
-
-<a name="Closing.Notes"></a>
 <h2>Closing Notes</h2>
 
 <ul>
@@ -228,7 +198,6 @@ r.resAdvisory.init = function () {</p>
 </ul>
 
 
-<a name="Further.reading"></a>
 <h2>Further reading</h2>
 
 <p><a href="http://blog.kotowicz.net/2013/12/rapportive-xsses-gmail-or-have-yourself.html">Another example of DOM-based XSS via extensions</a></p>

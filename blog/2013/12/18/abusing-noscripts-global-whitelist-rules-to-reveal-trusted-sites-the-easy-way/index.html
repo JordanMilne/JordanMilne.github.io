@@ -1,0 +1,299 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Abusing NoScript&#8217;s Global Whitelist Rules to Reveal Trusted Sites (the Easy Way) - Defined Misbehaviour</title>
+  <meta name="author" content="Jordan Milne">
+
+  
+  <meta name="description" content="Here&rsquo;s one that&rsquo;s been covered a bit before: NoScript makes it easy for whitelisted sites to see what other sites are on the whitelist. &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
+  <link href="/atom.xml" rel="alternate" title="Defined Misbehaviour" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Defined Misbehaviour</a></h1>
+  
+    <h2>Web security, programming, reverse-engineering, and everything related.</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:blog.saynotolinux.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/about-me">About Me</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Abusing NoScript&#8217;s Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-12-18T03:58:17-04:00" pubdate data-updated="true"><time class='entry-date' datetime='2013-12-18T03:58:17-04:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>3:58 am</span></time></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Here&rsquo;s one that&rsquo;s been <a href="http://www.w2spconf.com/2011/papers/jspriv.pdf">covered a bit before</a>: <a href="http://noscript.net/">NoScript</a> makes it easy for whitelisted sites to see what other sites are on the whitelist.</p>
+
+<h2>So what&rsquo;s the issue?</h2>
+
+<p>Most of the pertinent info is in the previous paper, but I&rsquo;ll give a brief summary. By default NoScript operates in whitelist mode, forbidding scripts from all domains. Once a site has been added to the whitelist, scripts from that domain <em>as well as those included from other whitelisted domains</em> may be executed on the page.</p>
+
+<!--more-->
+
+
+<p>NoScript&rsquo;s default whitelist is fairly small, and users don&rsquo;t generally
+share sets of whitelist rules (like with Adblock Plus,) so if a
+site is whitelisted the user must have used or
+visited that site.</p>
+
+<p>Since the only whitelist is a global one (allowing scripts to run <em>on</em> facebook.com also allows other whitelisted domains to execute scripts <em>from</em> facebook.com,) whitelisted sites may infer what other sites are on the whitelist by including scripts from other domains and checking whether or not they execute.</p>
+
+<p>The method described in the paper involves finding a valid script file on the domain you want to test and observing its side effects (modifications to the <code>window</code> object or the DOM.) This can be tedious for an attacker, and requires a bit of manual work. It may also pollute the DOM / <code>window</code> object with junk and break our testing code!</p>
+
+<p>Luckily, there&rsquo;s an easier way. <a href="https://grepular.com/Abusing_HTTP_Status_Codes_to_Expose_Private_Information">Mike Cardwell describes</a> a method of determining if a cross-origin resource returned a 200 status code using <code>&lt;script&gt;</code> tags. The <code>&lt;script&gt;</code> tag&rsquo;s <code>onload</code> handler will trigger on a successful HTTP status code, and the <code>onerror</code> handler will trigger otherwise. The <code>&lt;script&gt;</code> tag&rsquo;s <code>onload</code> handler will trigger <em>even if</em> the resource isn&rsquo;t a valid script.</p>
+
+<p>The same method may be used to determine if NoScript has blocked a resource that would normally return a 200 HTTP status code. <code><a href="http://domain.tld/">http://domain.tld/</a></code> usually returns HTML with a 200 status code, so that&rsquo;s a pretty good candidate for testing.</p>
+
+<p>For example:</p>
+
+<figure class='code'><figcaption><span>onload/onerror example</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;script </span><span class="na">src=</span><span class="s">&quot;http://google.com&quot;</span> <span class="na">onload=</span><span class="s">&quot;javascript:alert(&#39;google loaded&#39;)&quot;</span> <span class="na">onerror=</span><span class="s">&quot;javascript:alert(&#39;google failed&#39;)&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you have google.com whitelisted, this will say &ldquo;google loaded!&rdquo;. Otherwise (or if google.com is down for some reason) this will print &ldquo;google failed&rdquo;.</p>
+
+<h2>Cool, let&rsquo;s see it in action!</h2>
+
+<p><a href="http://saynotolinux.com/tests/noscript/whitelist_disclosure.html">Here&rsquo;s an example</a> of how the attack may be used, including a timing attack based on the <a href="http://blog.saynotolinux.com/2013/11/bypassing-requestpolicys-whitelist.html">RequestPolicy bypass described in my last post</a>. Mind, the timing attack is a bit spotty, and generally doesn&rsquo;t work on
+the first page load. Refresh the page if it doesn&rsquo;t work the first time.</p>
+
+<p>If you don&rsquo;t have either RequestPolicy or NoScript installed, here&rsquo;s what you should see:</p>
+
+<p><a href="/images/posts/whitelist-disclosure.png"><img src="/images/posts/whitelist-disclosure.png"></a></p>
+
+<h2>How can it be fixed?</h2>
+
+<p>Global whitelist entries by their very nature leak info to any other site on the whitelist. This won&rsquo;t be fixed in NoScript until support for per-site whitelists is added and people are encouraged to remove their old global rules.</p>
+
+<p>In the meantime, using a <a href="https://github.com/JordanMilne/requestpolicy">patched RequestPolicy</a> will give you a per-site whitelist for <em>all</em> cross-domain requests, effectively mitigating the issue.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Jordan Milne</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-12-18T03:58:17-04:00" pubdate data-updated="true"><time class='entry-date' datetime='2013-12-18T03:58:17-04:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>3:58 am</span></time></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/extensions/'>extensions</a>, <a class='category' href='/blog/categories/firefox/'>firefox</a>, <a class='category' href='/blog/categories/noscript/'>noscript</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/" data-via="" data-counturl="http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/" title="Previous Post: Bypassing RequestPolicy's whitelist using the jar: URI scheme">&laquo; Bypassing RequestPolicy&#8217;s whitelist using the jar: URI scheme</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/" title="Next Post: What's that smell? Sniffing cross-origin frame content in Firefox using timing attacks">What&#8217;s that smell? Sniffing cross-origin frame content in Firefox using timing attacks &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>About Me</h1>
+  <h3>Jordan Milne</h3>
+  <p>I&#8217;m a programmer with a passion for web / browser security. Most of my spare time goes towards putting something together or trying to make it come apart.</p>
+  <p>I dream about timing attacks, info leaks, and same-origin policy violations.</p>
+  <br/>
+  &bull;<a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#58;&#100;&#x65;&#x66;&#x69;&#110;&#101;&#x64;&#109;&#x69;&#x73;&#x62;&#x65;&#x68;&#97;&#x76;&#105;&#x6f;&#x75;&#x72;&#x40;&#115;&#97;&#121;&#110;&#111;&#x74;&#111;&#108;&#105;&#110;&#117;&#120;&#x2e;&#x63;&#x6f;&#x6d;">Email</a><br/>
+  &bull;<a href="http://www.linkedin.com/in/jordanamilne">LinkedIn</a><br/>
+  </ol>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/12/09/leaking-yahoo-mail-cross-origin-again/">Leaking Yahoo! Mail CrossOrigin&#8230; Again</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/">Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">Yahoo&#8217;s Pet Show of Horrors: Leaking a User&#8217;s Emails Crossdomain</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/">What&#8217;s That Smell? Sniffing Cross-origin Frame Content in Firefox Using Timing Attacks</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/">Abusing NoScript&#8217;s Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  <i>Any opinions expressed on this site are my own, and may not represent the opinions of those who, incidentally, pay me money.</i>
+</p>
+<p>
+  Copyright &copy; 2014 - Jordan Milne -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
