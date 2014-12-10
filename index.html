@@ -73,7 +73,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2014/12/09/leaking-yahoo-mail-cross-origin-again/">Leaking Yahoo! Mail CrossOrigin&#8230; Again</a></h1>
+      <h1 class="entry-title"><a href="/blog/2014/12/09/seizing-control-of-yahoo-mail-cross-origin-again/">Seizing Control of Yahoo! Mail Cross-Origin&#8230; Again</a></h1>
     
     
       <p class="meta">
@@ -100,7 +100,7 @@
 
 <h2>TL;DR</h2>
 
-<p>A .swf on Yahoo&rsquo;s CDN had a vulnerability that enabled crossorigin theft of the current user&rsquo;s contacts and mail. The configuration issue that allowed a .swf completely unrelated to Yahoo! Mail to do something like that still exists.</p>
+<p>A .swf on Yahoo&rsquo;s CDN had a vulnerability that enabled near-complete control over Yahoo! Mail crossorigin. The .swf itself is fixed, but the configuration issue that allowed a .swf completely unrelated to Yahoo! Mail to do something like that still exists.</p>
 
 <h2>The Issue</h2>
 
@@ -112,9 +112,9 @@
 <span class='line-number'>4</span>
 <span class='line-number'>5</span>
 </pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;crossorigin-policy&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;l.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;s.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;l.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;s.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
 </span><span class='line'><span class="nt">&lt;/crossorigin-policy&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
@@ -127,7 +127,7 @@
   
   
     <footer>
-      <a rel="full-article" href="/blog/2014/12/09/leaking-yahoo-mail-cross-origin-again/">Read on &rarr;</a>
+      <a rel="full-article" href="/blog/2014/12/09/seizing-control-of-yahoo-mail-cross-origin-again/">Read on &rarr;</a>
     </footer>
   
 
@@ -403,7 +403,7 @@ can be verified through the network pane in Firefox&rsquo;s dev tools. A limited
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2014/12/09/leaking-yahoo-mail-cross-origin-again/">Leaking Yahoo! Mail CrossOrigin&#8230; Again</a>
+        <a href="/blog/2014/12/09/seizing-control-of-yahoo-mail-cross-origin-again/">Seizing Control of Yahoo! Mail Cross-Origin&#8230; Again</a>
       </li>
     
       <li class="post">
@@ -435,7 +435,7 @@ can be verified through the network pane in Firefox&rsquo;s dev tools. A limited
     </div>
   </div>
   <footer role="contentinfo"><p>
-  <i>Any opinions expressed on this site are my own, and may not represent the opinions of those who, incidentally, pay me money.</i>
+  <i>Any opinions expressed on this site are my own, and may not represent the opinions of those who, incidentally, give me money.</i>
 </p>
 <p>
   Copyright &copy; 2014 - Jordan Milne -
