@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2014-12-11T02:32:02-04:00</updated>
+  <updated>2014-12-11T04:15:40-04:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -48,7 +48,7 @@
 <!--more-->
 
 
-<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/hotspotgallery.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/hotspotgallery.png" width="640" height="480"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/hotspotgallery.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/thumbs/hotspotgallery.jpg" width="640" height="480"></a></p>
 
 <p>Let&rsquo;s take a peek at <a href="https://gist.github.com/JordanMilne/145722dd2ca31bc96f86">the ActionScript from the decompiler</a> to see why this .swf is useful to us:</p>
 
@@ -353,23 +353,23 @@
 
 <p><a href="https://ca-mg6.mail.yahoo.com/neo/ws/sd?/v1/user/me/contacts;count=max;sort=asc?format=json&amp;view=compact&amp;_sc=1">Some</a> alternative <a href="https://ca-mg6.mail.yahoo.com/neo/ws/sd?/v1/user/me/profile;count=max;sort=asc?format=json&amp;_sc=1">endpoints</a> for the <a href="https://developer.yahoo.com/social/">Social API</a> fit the bill nicely. They let us fetch the current user&rsquo;s contacts and profile without requiring an auth token or user ID. You can see those leaking to a page we control here:</p>
 
-<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/justsocialstuff.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/justsocialstuff.png" width="640" height="480"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/justsocialstuff.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/thumbs/justsocialstuff.png" width="640" height="480"></a></p>
 
 <h2>But What About Mail?</h2>
 
 <p>One that stumped me for a long time was getting the user&rsquo;s mail. All of the endpoints for mail listings required a valid WSSID (web services session id?) Unfortunately, all the endpoints I could find that would give me one had non-200 response codes or wouldn&rsquo;t parse as XML. I eventually found what I was looking for by running YMail&rsquo;s android app through mitmproxy. <a href="https://m.mg.mail.yahoo.com/hg/controller/controller.php">Here you can see the WSSID we wanted</a>, returned with a 200 response code. Even though this endpoint&rsquo;s normally requested with a <code>POST</code> method, a <code>GET</code> with no params still gives us the WSSID&hellip; Sweet!</p>
 
-<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/ymail-mitm.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/ymail-mitm.png" width="640" height="480"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/ymail-mitm.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/thumbs/ymail-mitm.jpg" width="640" height="480"></a></p>
 
 <p>Let&rsquo;s leak the user&rsquo;s mail now. We&rsquo;ve got <a href="https://ca-mg6.mail.yahoo.com/mailsearch/v2/search?appid=YahooMailNeo&amp;wssid=PUT_WSSID_HERE&amp;sorting=-date&amp;query=%7B%22keyword%22%3A%22http%22%2C%22group%22%3A%7B%22from%22%3A%7B%7D%2C%22folder%22%3A%7B%7D%2C%22flags%22%3A%7B%22order%22%3A%22desc%22%7D%2C%22attachmenttype%22%3A%7B%7D%2C%22date%22%3A%7B%22unit%22%3A%22year%22%7D%7D%2C%22flags%22%3A%7B%22softdelete%22%3A0%7D%7D">a mail search endpoint here</a> that will return mail fragments without embedded HTML. You can see you&rsquo;ll still sometimes get angle brackets in the response due to inline replies, but you can muck with the query to get around those.</p>
 
-<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/search-endpoint.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/search-endpoint.png" width="640" height="480"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/search-endpoint.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/thumbs/search-endpoint.png" width="640" height="480"></a></p>
 
 <p>Now, that WSSID functions as a CSRF token as well, so we can now do anything we want as the current user. We can send mail as them, delete all their emails, basically anything a normal user can do.</p>
 
 <p>Here&rsquo;s a small page demonstrating a bunch of things we can do as long as the user is on a page we control. As you can see, We&rsquo;ve got the full list of contacts, all of the user&rsquo;s personal details including their email address and name, and a listing of their emails.</p>
 
-<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/show-all.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/show-all.png" width="640" height="480"></a></p>
+<p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/show-all.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/thumbs/show-all.png" width="640" height="480"></a></p>
 
 <p>We&rsquo;ve got enough for a fully-weaponized exploit at this point. We can not only leak their emails, we can also achieve lateral movement by triggering password resets on other services they use, and pulling the reset URLs right out of their email, then deleting them. Of course, previously emailed username/password combos are fair game, too. Very handy for the APT folks ;)</p>
 
