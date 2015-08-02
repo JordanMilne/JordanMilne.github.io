@@ -9,7 +9,7 @@
   <meta name="author" content="Jordan Milne">
 
   
-  <meta name="description" content="This is a follow-up to another article about crossorigin mail theft on Yahoo! Mail using Flash. For a better understanding of the issue, you can read &hellip;">
+  <meta name="description" content="(NOTE: This article has been sitting in my drafts since May 2014. I am very lazy.) TL;DR Flash only allows read access to the clipboard in event &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -84,6 +84,53 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/">Leaking Clipboard Contents With Flash: Let&#8217;s Explore User-Initiated Actions!</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-08-02T15:44:46-07:00" pubdate data-updated="true"><time class='entry-date' datetime='2015-08-02T15:44:46-07:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2015</span></span> <span class='time'>3:44 pm</span></time></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>(NOTE: This article has been sitting in my drafts since May 2014. I am very lazy.)</p>
+
+<h2>TL;DR</h2>
+
+<p>Flash only allows read access to the clipboard in event handlers triggered by <code>paste</code> events. Flash wasn&rsquo;t checking if the clipboard contents had changed since entering the event handler, leading to information leakage. Due to quirks in Flash&rsquo;s implementation, an attacker could read from and write to the clipboard for hours after the user navigated away from page containing the SWF, even after closing the incognito window.</p>
+
+<p><a href="/images/posts/flash-clip/clipstealer.gif"><img class="center" src="/images/posts/flash-clip/clipstealer.gif"></a></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/blog/2014/12/09/seizing-control-of-yahoo-mail-cross-origin-again/">Seizing Control of Yahoo! Mail Cross-Origin&#8230; Again</a></h1>
     
     
@@ -100,7 +147,7 @@
   
 
 
-<time datetime="2014-12-09T07:56:01-04:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-12-09T07:56:01-04:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>7:56 am</span></time></time>
+<time datetime="2014-12-09T03:56:01-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-12-09T03:56:01-08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>3:56 am</span></time></time>
         
       </p>
     
@@ -150,7 +197,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/">Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite</a></h1>
+      <h1 class="entry-title"><a href="/blog/2014/04/11/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/">Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite</a></h1>
     
     
       <p class="meta">
@@ -166,7 +213,7 @@
   
 
 
-<time datetime="2014-04-12T00:04:22-03:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-04-12T00:04:22-03:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:04 am</span></time></time>
+<time datetime="2014-04-11T20:04:22-07:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-04-11T20:04:22-07:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>11</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>8:04 pm</span></time></time>
         
       </p>
     
@@ -193,7 +240,7 @@
   
   
     <footer>
-      <a rel="full-article" href="/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/">Read on &rarr;</a>
+      <a rel="full-article" href="/blog/2014/04/11/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/">Read on &rarr;</a>
     </footer>
   
 
@@ -205,7 +252,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">Yahoo&#8217;s Pet Show of Horrors: Leaking a User&#8217;s Emails Crossdomain</a></h1>
+      <h1 class="entry-title"><a href="/blog/2014/02/28/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">Yahoo&#8217;s Pet Show of Horrors: Leaking a User&#8217;s Emails Crossdomain</a></h1>
     
     
       <p class="meta">
@@ -221,7 +268,7 @@
   
 
 
-<time datetime="2014-03-01T01:12:17-04:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-03-01T01:12:17-04:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>1:12 am</span></time></time>
+<time datetime="2014-02-28T21:12:17-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-02-28T21:12:17-08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>28</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>9:12 pm</span></time></time>
         
       </p>
     
@@ -238,7 +285,7 @@
   
   
     <footer>
-      <a rel="full-article" href="/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">Read on &rarr;</a>
+      <a rel="full-article" href="/blog/2014/02/28/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">Read on &rarr;</a>
     </footer>
   
 
@@ -266,7 +313,7 @@
   
 
 
-<time datetime="2014-02-05T10:12:13-04:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-02-05T10:12:13-04:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>10:12 am</span></time></time>
+<time datetime="2014-02-05T06:12:13-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-02-05T06:12:13-08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>6:12 am</span></time></time>
         
       </p>
     
@@ -299,7 +346,7 @@ Curious as to how they behaved with frames, I did a little testing.</p>
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/">Abusing NoScript&#8217;s Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)</a></h1>
+      <h1 class="entry-title"><a href="/blog/2013/12/17/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/">Abusing NoScript&#8217;s Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)</a></h1>
     
     
       <p class="meta">
@@ -315,7 +362,7 @@ Curious as to how they behaved with frames, I did a little testing.</p>
   
 
 
-<time datetime="2013-12-18T03:58:17-04:00" pubdate data-updated="true"><time class='entry-date' datetime='2013-12-18T03:58:17-04:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>3:58 am</span></time></time>
+<time datetime="2013-12-17T23:58:17-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2013-12-17T23:58:17-08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>17</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>11:58 pm</span></time></time>
         
       </p>
     
@@ -332,7 +379,7 @@ Curious as to how they behaved with frames, I did a little testing.</p>
   
   
     <footer>
-      <a rel="full-article" href="/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/">Read on &rarr;</a>
+      <a rel="full-article" href="/blog/2013/12/17/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/">Read on &rarr;</a>
     </footer>
   
 
@@ -360,7 +407,7 @@ Curious as to how they behaved with frames, I did a little testing.</p>
   
 
 
-<time datetime="2013-11-29T04:11:39-04:00" pubdate data-updated="true"><time class='entry-date' datetime='2013-11-29T04:11:39-04:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>4:11 am</span></time></time>
+<time datetime="2013-11-29T00:11:39-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2013-11-29T00:11:39-08:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:11 am</span></time></time>
         
       </p>
     
@@ -414,23 +461,23 @@ can be verified through the network pane in Firefox&rsquo;s dev tools. A limited
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/">Leaking Clipboard Contents With Flash: Let&#8217;s Explore User-Initiated Actions!</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2014/12/09/seizing-control-of-yahoo-mail-cross-origin-again/">Seizing Control of Yahoo! Mail Cross-Origin&#8230; Again</a>
       </li>
     
       <li class="post">
-        <a href="/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/">Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite</a>
+        <a href="/blog/2014/04/11/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/">Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite</a>
       </li>
     
       <li class="post">
-        <a href="/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">Yahoo&#8217;s Pet Show of Horrors: Leaking a User&#8217;s Emails Crossdomain</a>
+        <a href="/blog/2014/02/28/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">Yahoo&#8217;s Pet Show of Horrors: Leaking a User&#8217;s Emails Crossdomain</a>
       </li>
     
       <li class="post">
         <a href="/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/">What&#8217;s That Smell? Sniffing Cross-origin Frame Content in Firefox Using Timing Attacks</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/">Abusing NoScript&#8217;s Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)</a>
       </li>
     
   </ul>
@@ -449,7 +496,7 @@ can be verified through the network pane in Firefox&rsquo;s dev tools. A limited
   <i>Any opinions expressed on this site are my own, and may not represent the opinions of those who, incidentally, give me money.</i>
 </p>
 <p>
-  Copyright &copy; 2014 - Jordan Milne -
+  Copyright &copy; 2015 - Jordan Milne -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

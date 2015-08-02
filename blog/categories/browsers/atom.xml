@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Browsers | Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/blog/categories/browsers/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2014-12-11T04:36:41-04:00</updated>
+  <updated>2015-08-02T15:31:41-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[What's That Smell? Sniffing Cross-origin Frame Content in Firefox Using Timing Attacks]]></title>
     <link href="http://blog.saynotolinux.com/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/"/>
-    <updated>2014-02-05T10:12:13-04:00</updated>
+    <updated>2014-02-05T06:12:13-08:00</updated>
     <id>http://blog.saynotolinux.com/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox</id>
     <content type="html"><![CDATA[<p>Reading the blogs of <a href="http://lcamtuf.blogspot.com">lcamtuf</a> and <a href="http://scarybeastsecurity.blogspot.ca/">Chris Evans</a> is really what got me interested in browser security,
 so I&rsquo;m always on the lookout for novel cross-domain data theft vectors. Today I&rsquo;m going to go into
