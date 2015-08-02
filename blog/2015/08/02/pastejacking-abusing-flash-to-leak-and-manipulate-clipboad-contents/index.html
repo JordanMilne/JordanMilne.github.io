@@ -265,10 +265,10 @@
 
 <h3>Leaking clipboard contents to a remote server</h3>
 
-<p>Unfortunately, I couldn&rsquo;t find a way to make Flash send HTTP requests while inside the event handler. However, we can pass the data to JavaScript and have <em>it</em> send the data to our servers, since our ActionScript won&rsquo;t block JS:</p>
+<p>Unfortunately, I couldn&rsquo;t find a way to make Flash send HTTP requests while inside the event handler. However, we can pass the data to JavaScript and have <em>it</em> send the data to our servers, since our ActionScript handlers won&rsquo;t block JS:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='as3'><span class='line'><span class="n">ExternalInterface</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="s1">&#39;leakData&#39;</span><span class="o">,</span> <span class="n">Clipboard</span><span class="o">.</span><span class="na">generalClipboard</span><span class="o">.</span><span class="na">getData</span><span class="o">(...))</span>
+</pre></td><td class='code'><pre><code class='as3'><span class='line'><span class="n">ExternalInterface</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="s1">&#39;leakData&#39;</span><span class="o">,</span> <span class="n">Clipboard</span><span class="o">.</span><span class="na">generalClipboard</span><span class="o">.</span><span class="na">getData</span><span class="o">(</span><span class="n">ClipboardFormats</span><span class="o">.</span><span class="na">TEXT_FORMAT</span><span class="o">)</span> <span class="k">as</span> <span class="n">String</span><span class="o">);</span>
 </span></code></pre></td></tr></table></div></figure>
 
 
