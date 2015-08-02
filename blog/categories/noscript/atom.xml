@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Noscript | Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/blog/categories/noscript/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2015-08-02T15:46:09-07:00</updated>
+  <updated>2015-08-02T16:14:48-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Abusing NoScript's Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)]]></title>
-    <link href="http://blog.saynotolinux.com/blog/2013/12/17/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/"/>
-    <updated>2013-12-17T23:58:17-08:00</updated>
-    <id>http://blog.saynotolinux.com/blog/2013/12/17/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way</id>
+    <link href="http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/"/>
+    <updated>2013-12-18T01:58:17-08:00</updated>
+    <id>http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way</id>
     <content type="html"><![CDATA[<p>Here&rsquo;s one that&rsquo;s been <a href="http://www.w2spconf.com/2011/papers/jspriv.pdf">covered a bit before</a>: <a href="http://noscript.net/">NoScript</a> makes it easy for whitelisted sites to see what other sites are on the whitelist.</p>
 
 <h2>So what&rsquo;s the issue?</h2>

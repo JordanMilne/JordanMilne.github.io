@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Extensions | Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/blog/categories/extensions/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2015-08-02T15:46:09-07:00</updated>
+  <updated>2015-08-02T16:14:48-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite]]></title>
-    <link href="http://blog.saynotolinux.com/blog/2014/04/11/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/"/>
-    <updated>2014-04-11T20:04:22-07:00</updated>
-    <id>http://blog.saynotolinux.com/blog/2014/04/11/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw</id>
+    <link href="http://blog.saynotolinux.com/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/"/>
+    <updated>2014-04-12T01:04:22-07:00</updated>
+    <id>http://blog.saynotolinux.com/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw</id>
     <content type="html"><![CDATA[<h2>TL;DR</h2>
 
 <p>The library that <a href="http://redditenhancementsuite.com/">Reddit Enhancement Suite</a> (a browser extension for reddit users) used for HTML sanitization had a bug that bit them pretty hard, enabling DOM-based XSS of 1.5~ million reddit users. RES pushed out a fixed version, and reddit deployed a script to prevent users of the old version from accidentally getting exploited; thus preventing an XSS worm.</p>
@@ -206,9 +206,9 @@ r.resAdvisory.init = function () {
   
   <entry>
     <title type="html"><![CDATA[Abusing NoScript's Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)]]></title>
-    <link href="http://blog.saynotolinux.com/blog/2013/12/17/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/"/>
-    <updated>2013-12-17T23:58:17-08:00</updated>
-    <id>http://blog.saynotolinux.com/blog/2013/12/17/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way</id>
+    <link href="http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/"/>
+    <updated>2013-12-18T01:58:17-08:00</updated>
+    <id>http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way</id>
     <content type="html"><![CDATA[<p>Here&rsquo;s one that&rsquo;s been <a href="http://www.w2spconf.com/2011/papers/jspriv.pdf">covered a bit before</a>: <a href="http://noscript.net/">NoScript</a> makes it easy for whitelisted sites to see what other sites are on the whitelist.</p>
 
 <h2>So what&rsquo;s the issue?</h2>
@@ -261,7 +261,7 @@ the first page load. Refresh the page if it doesn&rsquo;t work the first time.</
   <entry>
     <title type="html"><![CDATA[Bypassing RequestPolicy's Whitelist Using the Jar: URI Scheme]]></title>
     <link href="http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/"/>
-    <updated>2013-11-29T00:11:39-08:00</updated>
+    <updated>2013-11-29T01:11:39-08:00</updated>
     <id>http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme</id>
     <content type="html"><![CDATA[<p>Here&rsquo;s an interesting bug I found while looking at some cross-domain data-stealing issues.
 It&rsquo;s possible to bypass <a href="https://www.requestpolicy.com/about.html">RequestPolicy</a>&rsquo;s whitelist entirely by referencing a resource nested in a <a href="http://www.gnucitizen.org/blog/web-mayhem-firefoxs-jar-protocol-issues/">jar URI</a>:</p>

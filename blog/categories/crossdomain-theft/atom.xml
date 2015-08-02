@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Crossdomain_theft | Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/blog/categories/crossdomain-theft/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2015-08-02T15:46:09-07:00</updated>
+  <updated>2015-08-02T16:14:48-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Yahoo's Pet Show of Horrors: Leaking a User's Emails Crossdomain]]></title>
-    <link href="http://blog.saynotolinux.com/blog/2014/02/28/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/"/>
-    <updated>2014-02-28T21:12:17-08:00</updated>
-    <id>http://blog.saynotolinux.com/blog/2014/02/28/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email</id>
+    <link href="http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/"/>
+    <updated>2014-03-01T01:12:17-08:00</updated>
+    <id>http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email</id>
     <content type="html"><![CDATA[<p>I&rsquo;m taking a break from browser security posts while I wait for vendors to patch, so the next few posts are probably going to be about web app security. Hopefully I should have some posts about architectural flaws in browsers / plugins by next month.</p>
 
 <h2>Initial Discovery</h2>
