@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2015-08-02T15:45:12-07:00</updated>
+  <updated>2015-08-02T15:46:09-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -41,7 +41,7 @@
 
 <p>First, the new <code>Clipboard</code> API only allowed writing to the clipboard when inside certain event handlers (<code>mousedown</code>, <code>keydown</code>, <code>copy</code>, etc.)</p>
 
-<p>Second, that event handler had to have been triggered by user interaction, meaning that events triggered by <code>dispatchEvent</code> et al. cannot write to the clipboard.</p>
+<p>Second, that event handler had to have been triggered by user interaction, meaning that event handlers triggered by <code>dispatchEvent</code> et al. cannot write to the clipboard.</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>

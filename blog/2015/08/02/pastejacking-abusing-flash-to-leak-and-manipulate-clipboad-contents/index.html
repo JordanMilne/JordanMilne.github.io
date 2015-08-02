@@ -127,7 +127,7 @@
 
 <p>First, the new <code>Clipboard</code> API only allowed writing to the clipboard when inside certain event handlers (<code>mousedown</code>, <code>keydown</code>, <code>copy</code>, etc.)</p>
 
-<p>Second, that event handler had to have been triggered by user interaction, meaning that events triggered by <code>dispatchEvent</code> et al. cannot write to the clipboard.</p>
+<p>Second, that event handler had to have been triggered by user interaction, meaning that event handlers triggered by <code>dispatchEvent</code> et al. cannot write to the clipboard.</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
