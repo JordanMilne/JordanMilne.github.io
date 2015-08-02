@@ -111,7 +111,7 @@
 
 <h2>TL;DR</h2>
 
-<p>Flash only allows read access to the clipboard in event handlers triggered by <code>paste</code> events. Flash wasn&rsquo;t checking if the clipboard contents had changed since entering the event handler, leading to information leakage. Due to quirks in Flash&rsquo;s implementation, an attacker could read from and write to the clipboard for hours after the user navigated away from page containing the SWF, even after closing the incognito window.</p>
+<p>Flash only allows read access to the clipboard in event handlers triggered by <code>paste</code> events, but Flash wasn&rsquo;t checking if the clipboard contents had changed since entering the event handler. Due to quirks in how Flash&rsquo;s event handlers work, an attacker could read from and write to the clipboard for hours after the user navigated away from page containing the SWF, even after navigating away or closing the incognito window.</p>
 
 <p><a href="/images/posts/flash-clip/clipstealer.gif"><img class="center" src="/images/posts/flash-clip/clipstealer.gif"></a></p>
 

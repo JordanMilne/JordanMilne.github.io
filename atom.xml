@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2015-08-02T15:42:03-07:00</updated>
+  <updated>2015-08-02T15:45:12-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -22,7 +22,7 @@
 
 <h2>TL;DR</h2>
 
-<p>Flash only allows read access to the clipboard in event handlers triggered by <code>paste</code> events. Flash wasn&rsquo;t checking if the clipboard contents had changed since entering the event handler, leading to information leakage. Due to quirks in Flash&rsquo;s implementation, an attacker could read from and write to the clipboard for hours after the user navigated away from page containing the SWF, even after closing the incognito window.</p>
+<p>Flash only allows read access to the clipboard in event handlers triggered by <code>paste</code> events, but Flash wasn&rsquo;t checking if the clipboard contents had changed since entering the event handler. Due to quirks in how Flash&rsquo;s event handlers work, an attacker could read from and write to the clipboard for hours after the user navigated away from page containing the SWF, even after navigating away or closing the incognito window.</p>
 
 <p><a href="http://blog.saynotolinux.com/images/posts/flash-clip/clipstealer.gif"><img class="center" src="http://blog.saynotolinux.com/images/posts/flash-clip/clipstealer.gif"></a></p>
 
