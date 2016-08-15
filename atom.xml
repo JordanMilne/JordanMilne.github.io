@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2016-08-15T12:56:30-07:00</updated>
+  <updated>2016-08-15T12:58:56-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -349,7 +349,7 @@
 
 <p>At this point, I started looking at the various APIs that PyCharm exposed via the same webserver. Having to guess a valid, open project name to leak files is a big mitigating factor, and the API might give us a way around that.</p>
 
-<p>Eventually I came upon the <code>/api/internal</code> internal endpoint, which corresponds to <a href="https://github.com/JetBrains/intellij-community/blob/10a4c91dbfca935b4b5531003fd8c13b56e66202/platform/built-in-server/src/org/jetbrains/ide/JetBrainsProtocolHandlerHttpService.java"><code>JetBrainsProtocolHandlerHttpService</code></a>. Apparently this lets you pass in a JSON blob containing a URL with a <code>jetbrains:</code> scheme, and the IDE will do something special with it. As far as I can tell, none of the IDEs actually install a systemwide handler for those URLs, and those URLs are undocumented. In any case, let&rsquo;s look for some interesting <code>jetbrains:</code> URLs we can pass it.</p>
+<p>Eventually I came upon the <code>/api/internal</code> endpoint, which corresponds to <a href="https://github.com/JetBrains/intellij-community/blob/10a4c91dbfca935b4b5531003fd8c13b56e66202/platform/built-in-server/src/org/jetbrains/ide/JetBrainsProtocolHandlerHttpService.java"><code>JetBrainsProtocolHandlerHttpService</code></a>. Apparently this lets you pass in a JSON blob containing a URL with a <code>jetbrains:</code> scheme, and the IDE will do something special with it. As far as I can tell, none of the IDEs actually install a systemwide handler for those URLs, and those URLs are undocumented. In any case, let&rsquo;s look for some interesting <code>jetbrains:</code> URLs we can pass it.</p>
 
 <p>The <a href="https://github.com/JetBrains/intellij-community/blob/10a4c91dbfca935b4b5531003fd8c13b56e66202/platform/platform-impl/src/com/intellij/openapi/project/impl/JBProtocolOpenProjectCommand.java"><code>jetbrains://&lt;project_name&gt;/open/&lt;path&gt;</code> handler</a> seems promising:</p>
 
@@ -479,15 +479,15 @@
 
 <h3>The impact under Windows is much worse</h3>
 
-<p>Wait a second, this seems a lot more interesting than arbitrary file reads. With one request we can get Windows users to load an attacker-controlled project from our remote SMB share. There&rsquo;s almost certainly abuse potential here, and we don&rsquo;t have to look far to find it.</p>
+<p>Wait a second, seems like we can do something a lot more interesting than arbitrary file reads. With one request we can get Windows users to load an attacker-controlled project from our remote SMB share. There&rsquo;s almost certainly abuse potential here, and we don&rsquo;t have to look far to find it.</p>
 
-<p>The projects for each of JetBrains&#8217; IDEs have a notion of startup tasks. In PyCharm you can have a Python script run automatically on project load, and similarly on Android Studio and IntelliJ IDEA you can have a <code>.jar</code> run. Here I&rsquo;ve made it so that <code>hax.py</code> in the project root will be automatically run when the project opens:</p>
+<p>The projects for each of JetBrains&#8217; IDEs have a notion of startup tasks. In PyCharm you can have a Python script run automatically on project load, and similarly on Android Studio and IntelliJ IDEA you can have a <code>.jar</code> run. Here I&rsquo;ve made it so that the <code>hax.py</code> script in the project root will be automatically run when the project opens:</p>
 
 <p><img src="http://blog.saynotolinux.com/images/posts/jetbrains/startup_tasks.png"></p>
 
 <p><img src="http://blog.saynotolinux.com/images/posts/jetbrains/startup_tasks2.png"></p>
 
-<p>With this, we just need to add a <code>hax.py</code> file to our project root containing:</p>
+<p>Now we just need to add a <code>hax.py</code> file to our project root containing:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
