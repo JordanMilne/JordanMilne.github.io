@@ -9,7 +9,7 @@
   <meta name="author" content="Jordan Milne">
 
   
-  <meta name="description" content="(NOTE: This article has been sitting in my drafts since May 2014. I am very lazy.) TL;DR Flash only allows read access to the clipboard in event &hellip;">
+  <meta name="description" content="TL;DR From at least 2013 until May 2016 JetBrains' IDEs were vulnerable to local file leakage, with the Windows versions additionally being &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -27,22 +27,22 @@
   <script src="/javascripts/libs/jquery.min.js" type="text/javascript" defer></script>
   <script src="/javascripts/octopress.js" type="text/javascript" defer></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
-  
   <script type="text/javascript">
-    var _gaq = _gaq || [];
-    _gaq.push(['_setAccount', 'UA-47846401-1']);
-    _gaq.push(['_trackPageview']);
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-47846401-1']);
+  _gaq.push(['_trackPageview']);
 
-    (function() {
-      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-    })();
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
   </script>
 
+  
 
 </head>
 
@@ -84,6 +84,56 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/blog/2016/08/15/jetbrains-ide-remote-code-execution-and-local-file-disclosure-vulnerability-analysis/">JetBrains IDE Remote Code Execution and Local File Disclosure</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+
+<time datetime="2016-08-15T00:00:00-07:00" pubdate data-updated="true"><time class='entry-date' datetime='2016-08-15'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span></time></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h1>TL;DR</h1>
+
+<p>From at least 2013 until May 2016 JetBrains&#8217; IDEs were vulnerable to local file leakage, with the Windows versions additionally being vulnerable to remote code execution. The only prerequisite for the attack was to have the victim visit an attacker-controlled webpage while the IDE was open.</p>
+
+<p>Affected IDEs included PyCharm, Android Studio, WebStorm, IntelliJ IDEA and several others.</p>
+
+<p>I&rsquo;ve tracked the core of most of these issues (CORS allowing all origins + always-on webserver) <a href="https://github.com/JetBrains/intellij-community/commit/11f333f60cd2fc5b14f8535a2f1d156e90bb372e">back to the addition of the webserver to WebStorm in 2013</a>. It&rsquo;s my belief that all JetBrains IDEs with always-on servers since then are vulnerable to variants of these attacks.</p>
+
+<p>The arbitrary code execution PoC for Windows was in all IDE releases <a href="https://github.com/JetBrains/intellij-community/commit/9c762d305709afa51103dedd48e37c5c727fc80e">since at least July 13, 2015</a>, but was probably exploitable earlier via other means.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/08/15/jetbrains-ide-remote-code-execution-and-local-file-disclosure-vulnerability-analysis/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/">Leaking Clipboard Contents With Flash: Let&#8217;s Explore User-Initiated Actions!</a></h1>
     
     
@@ -100,7 +150,8 @@
   
 
 
-<time datetime="2015-08-02T15:44:46-07:00" pubdate data-updated="true"><time class='entry-date' datetime='2015-08-02T15:44:46-07:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2015</span></span> <span class='time'>3:44 pm</span></time></time>
+
+<time datetime="2015-08-02T01:44:46-07:00" pubdate data-updated="true"><time class='entry-date' datetime='2015-08-02T01:44:46-07:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2015</span></span></time></time>
         
       </p>
     
@@ -109,11 +160,23 @@
 
   <div class="entry-content"><p>(NOTE: This article has been sitting in my drafts since May 2014. I am very lazy.)</p>
 
+
+
+
 <h2>TL;DR</h2>
+
+
+
 
 <p>Flash only allows read access to the clipboard in event handlers triggered by <code>paste</code> events, but Flash wasn&rsquo;t checking if the clipboard contents had changed since entering the event handler. Due to quirks in how Flash&rsquo;s event handlers work, an attacker could read from and write to the clipboard for hours after the user navigated away from page containing the SWF, even after navigating away or closing the incognito window.</p>
 
+
+
+
 <p><a href="/images/posts/flash-clip/clipstealer.gif"><img class="center" src="/images/posts/flash-clip/clipstealer.gif"></a></p>
+
+
+
 
 </div>
   
@@ -147,7 +210,8 @@
   
 
 
-<time datetime="2014-12-09T03:56:01-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-12-09T03:56:01-08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>3:56 am</span></time></time>
+
+<time datetime="2014-12-09T03:56:01-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-12-09T03:56:01-08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span></time></time>
         
       </p>
     
@@ -156,13 +220,28 @@
 
   <div class="entry-content"><p><em>This is a follow-up to another article about crossorigin mail theft on Yahoo! Mail using Flash. For a better understanding of the issue, you can read that here: <a href="http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/</a></em></p>
 
+
+
+
 <h2>TL;DR</h2>
+
+
+
 
 <p>A .swf on Yahoo&rsquo;s CDN had a vulnerability that enabled near-complete control over Yahoo! Mail crossorigin. The .swf itself is fixed, but the configuration issue that allowed a .swf completely unrelated to Yahoo! Mail to do something like that still exists.</p>
 
+
+
+
 <h2>The Issue</h2>
 
+
+
+
 <p>So, in the last article we established that YMail&rsquo;s <code>crossdomain.xml</code> rules are incredibly lax:</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -170,16 +249,24 @@
 <span class='line-number'>4</span>
 <span class='line-number'>5</span>
 </pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;crossorigin-policy&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;l.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;s.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;l.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;s.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
 </span><span class='line'><span class="nt">&lt;/crossorigin-policy&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
 
+
+
 <p>They allow .swfs on any subdomain of <code>yahoo.com</code> to read resources on YMail crossorigin. Last time we abused a crossorigin proxy on <code>hk.promotions.yahoo.com</code> to serve up our own .swf that would request pages from YMail and leak them back to us. The crossorigin proxy has since been patched, but the loose <code>crossdomain.xml</code> rules remain. Assuming there&rsquo;s no way for us to serve our own .swf through <code>yahoo.com</code> anymore, how can we exploit these rules without using MITM attacks? Well, we abuse vulnerabilities in .swfs that are <em>legitimately</em> hosted on subdomains of <code>yahoo.com</code>.</p>
 
+
+
+
 <p>Let&rsquo;s look for a .swf that will allow us to make arbitrary requests, and read the response. With a little searching we find a good candidate, <a href="https://sp.yimg.com/dv/i/izmo/engine/hotspotgallery/hotspotgallery.swf">hotspotgallery.swf</a>, related to a feature on Yahoo! Autos that gives 3D tours of cars. Normally it&rsquo;s served up on <code>sp.yimg.com</code>, which isn&rsquo;t a domain allowed by YMail&rsquo;s <code>crossdomain.xml</code>, but with a little finagling we find that the same .swf <a href="http://img.autos.yahoo.com/i/izmo/engine/hotspotgallery/hotspotgallery.swf">can also be accessed on img.autos.yahoo.com</a>.</p>
+
+
+
 
 </div>
   
@@ -213,7 +300,8 @@
   
 
 
-<time datetime="2014-04-12T01:04:22-07:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-04-12T01:04:22-07:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>1:04 am</span></time></time>
+
+<time datetime="2014-04-12T01:04:22-07:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-04-12T01:04:22-07:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span></time></time>
         
       </p>
     
@@ -268,7 +356,8 @@
   
 
 
-<time datetime="2014-03-01T01:12:17-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-03-01T01:12:17-08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>1:12 am</span></time></time>
+
+<time datetime="2014-03-01T01:12:17-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-03-01T01:12:17-08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span></time></time>
         
       </p>
     
@@ -313,7 +402,8 @@
   
 
 
-<time datetime="2014-02-05T06:12:13-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-02-05T06:12:13-08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>6:12 am</span></time></time>
+
+<time datetime="2014-02-05T06:12:13-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-02-05T06:12:13-08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span></time></time>
         
       </p>
     
@@ -362,7 +452,8 @@ Curious as to how they behaved with frames, I did a little testing.</p>
   
 
 
-<time datetime="2013-12-18T01:58:17-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2013-12-18T01:58:17-08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>1:58 am</span></time></time>
+
+<time datetime="2013-12-18T03:58:17-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2013-12-18T03:58:17-08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span></time></time>
         
       </p>
     
@@ -407,7 +498,8 @@ Curious as to how they behaved with frames, I did a little testing.</p>
   
 
 
-<time datetime="2013-11-29T01:11:39-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2013-11-29T01:11:39-08:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>1:11 am</span></time></time>
+
+<time datetime="2013-11-29T04:11:39-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2013-11-29T04:11:39-08:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span></time></time>
         
       </p>
     
@@ -450,7 +542,7 @@ can be verified through the network pane in Firefox&rsquo;s dev tools. A limited
   <h1>About Me</h1>
   <h3>Jordan Milne</h3>
   <p>I&#8217;m a programmer with a passion for web / browser security. Most of my spare time goes towards putting something together or trying to make it come apart.</p>
-  <p>I dream about timing attacks, info leaks, and same-origin policy violations.</p>
+  <p>I dream about timing attacks, info leaks, and same-origin policy bypasses.</p>
   <br/>
   &bull;<a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#58;&#100;&#x65;&#x66;&#x69;&#110;&#101;&#x64;&#109;&#x69;&#x73;&#x62;&#x65;&#x68;&#97;&#x76;&#105;&#x6f;&#x75;&#x72;&#x40;&#115;&#97;&#121;&#110;&#111;&#x74;&#111;&#108;&#105;&#110;&#117;&#120;&#x2e;&#x63;&#x6f;&#x6d;">Email</a><br/>
   &bull;<a href="http://www.linkedin.com/in/jordanamilne">LinkedIn</a><br/>
@@ -459,6 +551,10 @@ can be verified through the network pane in Firefox&rsquo;s dev tools. A limited
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2016/08/15/jetbrains-ide-remote-code-execution-and-local-file-disclosure-vulnerability-analysis/">JetBrains IDE Remote Code Execution and Local File Disclosure</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/">Leaking Clipboard Contents With Flash: Let&#8217;s Explore User-Initiated Actions!</a>
@@ -474,10 +570,6 @@ can be verified through the network pane in Firefox&rsquo;s dev tools. A limited
     
       <li class="post">
         <a href="/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">Yahoo&#8217;s Pet Show of Horrors: Leaking a User&#8217;s Emails Crossdomain</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/">What&#8217;s That Smell? Sniffing Cross-origin Frame Content in Firefox Using Timing Attacks</a>
       </li>
     
   </ul>
@@ -496,7 +588,7 @@ can be verified through the network pane in Firefox&rsquo;s dev tools. A limited
   <i>Any opinions expressed on this site are my own, and may not represent the opinions of those who, incidentally, give me money.</i>
 </p>
 <p>
-  Copyright &copy; 2015 - Jordan Milne -
+  Copyright &copy; 2016 - Jordan Milne -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

