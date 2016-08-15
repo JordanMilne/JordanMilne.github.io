@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2016-08-15T12:58:56-07:00</updated>
+  <updated>2016-08-15T13:23:28-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -524,7 +524,7 @@
 <ul>
 <li><a href="http://saynotolinux.com/tests/jetbrains/minimal.html">Minimal file leaking PoC</a></li>
 <li><a href="http://saynotolinux.com/tests/jetbrains/sleuth.html">Weaponized file leaking PoC</a></li>
-<li>No live PoC for the Windows RCE &lsquo;cause I don&rsquo;t want to host an public-facing SMB share :)</li>
+<li>No live PoC for the Windows RCE &lsquo;cause I don&rsquo;t want to host a public-facing SMB share :)</li>
 </ul>
 
 
