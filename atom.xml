@@ -4,7 +4,7 @@
   <title><![CDATA[Defined Misbehaviour]]></title>
   <link href="http://blog.saynotolinux.com/atom.xml" rel="self"/>
   <link href="http://blog.saynotolinux.com/"/>
-  <updated>2016-08-15T20:53:03-07:00</updated>
+  <updated>2016-08-16T12:54:12-07:00</updated>
   <id>http://blog.saynotolinux.com/</id>
   <author>
     <name><![CDATA[Jordan Milne]]></name>
@@ -26,7 +26,7 @@
 
 <p>I&rsquo;ve tracked the core of most of these issues (CORS allowing all origins + always-on webserver) <a href="https://github.com/JetBrains/intellij-community/commit/11f333f60cd2fc5b14f8535a2f1d156e90bb372e">back to the addition of the webserver to WebStorm in 2013</a>. It&rsquo;s my belief that all JetBrains IDEs with always-on servers since then are vulnerable to variants of these attacks.</p>
 
-<p>The arbitrary code execution PoC for Windows and OS X was in all IDE releases <a href="https://github.com/JetBrains/intellij-community/commit/9c762d305709afa51103dedd48e37c5c727fc80e">since at least July 13, 2015</a>, but was probably exploitable earlier via other means.</p>
+<p>The arbitrary code execution vuln affecting Windows and OS X was in all IDE releases <a href="https://github.com/JetBrains/intellij-community/commit/9c762d305709afa51103dedd48e37c5c727fc80e">since at least July 13, 2015</a>, but was probably exploitable earlier via other means.</p>
 
 <p>All of the issues found were fixed in the patch released <a href="http://blog.jetbrains.com/blog/2016/05/11/security-update-for-intellij-based-ides-v2016-1-and-older-versions/">May 11th 2016</a>.</p>
 
